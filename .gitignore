@@ -1,0 +1,31 @@
+# Entorno Virtual
+venv/
+env/
+ENV/
+
+# Archivos compilados de Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# Archivos del Sistema Operativo (Windows / Mac)
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Configuración de Editores de Código (VS Code / PyCharm)
+.vscode/
+.idea/
+
+# Checkpoints de Jupyter Notebooks (si usas notebooks locales)
+.ipynb_checkpoints/
+
+# Credenciales o claves secretas (si llegas a usar en Streamlit)
+.streamlit/secrets.toml
+.env
