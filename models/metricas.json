@@ -1,0 +1,23 @@
+{
+  "modelo": "Random Forest",
+  "clases": [
+    "Normal",
+    "LG",
+    "LL",
+    "LLG",
+    "Trifásica"
+  ],
+  "variables_entrada": [
+    "Va",
+    "Vb",
+    "Vc",
+    "Ia",
+    "Ib",
+    "Ic"
+  ],
+  "accuracy_prueba": 0.9987,
+  "f1_macro_prueba": 0.9987,
+  "recall_minimo_por_clase": 0.9956,
+  "latencia_ms": 8.17,
+  "nota_clases": "LLL y LLLG se unieron en una sola clase 'Trifásica' porque en una falla trifásica balanceada la conexión a tierra no lleva corriente y las señales de fase son las mismas."
+}
