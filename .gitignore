@@ -29,3 +29,7 @@ Thumbs.db
 # Credenciales o claves secretas (si llegas a usar en Streamlit)
 .streamlit/secrets.toml
 .env
+
+# Archivos de contexto y notebook original de Jorge
+.agents/
+electro_volt_notebook_modelado.ipynb
