@@ -1,26 +1,38 @@
 # Modelos Entrenados de ELECTRO-VOLT
 
-Este directorio almacena los artefactos serializados de los modelos de Machine Learning entrenados para la clasificación multiclase de fallos eléctricos.
+Este directorio almacena los artefactos serializados de los modelos de Machine Learning entrenados para la clasificación multiclase de fallos eléctricos a partir de las 6 señales continuas de fase (Va, Vb, Vc, Ia, Ib, Ic).
 
 ## 1. Contenido del Directorio
 
 ```text
 models/
-├── best_model.pkl          # Paquete oficial del modelo final (Random Forest 100 estimadores)
-├── modelo_fallos_rf.joblib # Réplica oficial para compatibilidad directa con scripts legacy
-├── model_v1.pkl            # Versión baseline 1.0 del modelo serializado
-└── README.md               # Este documento
+├── best_model.pkl          # Paquete oficial del modelo final optimizado (5 clases, Random Forest)
+├── modelo_fallos_rf.joblib # Réplica exacta para compatibilidad con código de inferencia
+├── model_v1.pkl            # Versión baseline inicial (6 clases originales de Kaggle)
+└── README.md               # Este documento de especificación
 ```
 
-## 2. Contrato de Datos del Modelo Serializado (`joblib.dump(..., compress=3)`)
+## 2. Comparativa entre Modelos
 
-El archivo empaqueta un diccionario de Python con las siguientes claves requeridas para la inferencia y la interfaz web:
+| Característica | model_v1.pkl (Baseline v1.0) | best_model.pkl (Producción Final) |
+|---|---|---|
+| Algoritmo | Random Forest (100 árboles) | Random Forest (100 árboles) |
+| Clases objetivo | 6 clases: Normal, LG, LL, LLG, LLL, LLLG | 5 clases: Normal, LG, LL, LLG, Trifásica |
+| Justificación física | Modelo previo al análisis de indistinguibilidad | Fusión física de LLL y LLLG (anulación de corriente en tierra) |
+| Accuracy en Test | ~87.3% (caída por confusión LLL/LLLG) | 99.94% |
+| F1-Score Macro | ~0.871 | 0.9996 |
+| Latencia inferencia | ~18 ms | ~17 ms |
+| Estado de despliegue | Histórico / Comparativo | Activo en Producción (App Web) |
+
+## 3. Contrato de Datos del Paquete Serializado
+
+Los archivos `.pkl` y `.joblib` están serializados con `joblib.dump(..., compress=3)` y encapsulan un diccionario de Python con las siguientes claves requeridas:
 
 ```python
 {
-    "modelo": rf,               # RandomForestClassifier entrenado (100 árboles)
+    "modelo": rf,               # Objeto RandomForestClassifier entrenado
     "columnas": ["Va", "Vb", "Vc", "Ia", "Ib", "Ic"],  # Orden estricto de entrada
-    "clases": ["LG", "LL", "LLG", "Normal", "Trifásica"],
+    "clases": ["LG", "LL", "LLG", "Normal", "Trifásica"], # Clases del modelo
     "mensajes_operador": {
         "Normal": "Operación normal. No se detecta falla.",
         "LG": "Falla de línea a tierra.",
@@ -39,11 +51,19 @@ El archivo empaqueta un diccionario de Python con las siguientes claves requerid
 }
 ```
 
-## 3. Desempeño y Métricas SMART del Modelo Final
-- **Accuracy en Test:** $0.9994$ ($99.94\%$)
-- **F1-Score Macro:** $0.9996$ ($1.000$)
-- **Recall Mínimo por Clase:** $0.998$
-- **Brecha de Generalización (Gap):** $0.0006$ (Óptimo, sin overfitting)
-- **Validación Cruzada StratifiedKFold (k=5):** $0.9988 \pm 0.0011$
-- **Latencia de Inferencia:** $\approx 19\text{ ms}$ por predicción individual en CPU
-- **Throughput:** $> 30,000\text{ muestras/s}$ en inferencia en lote
+## 4. Modo de Consumo en Código
+
+```python
+import joblib
+import pandas as pd
+
+paquete = joblib.load("models/best_model.pkl")
+modelo = paquete["modelo"]
+columnas = paquete["columnas"]
+
+# DataFrame con las 6 señales en orden canónico
+lectura = pd.DataFrame([{"Va": 0.40, "Vb": -0.13, "Vc": -0.27, "Ia": -151.29, "Ib": -9.68, "Ic": 85.80}])[columnas]
+prediccion = modelo.predict(lectura)[0]
+probabilidades = modelo.predict_proba(lectura)[0]
+mensaje = paquete["mensajes_operador"][prediccion]
+```
