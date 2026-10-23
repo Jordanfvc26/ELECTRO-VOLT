@@ -45,6 +45,32 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
+# ==============================================================================
+# ESTILOS PERSONALIZADOS (OCULTAR BRANDING DE STREAMLIT Y COMMUNITY CLOUD)
+# ==============================================================================
+st.markdown(
+    """
+    <style>
+    /* Ocultar badge flotante inferior derecho ('Created by ...' / Streamlit Community Cloud) */
+    div[class*="viewerBadge"] {
+        display: none !important;
+    }
+
+    /* Ocultar pie de página predeterminado ('Made with Streamlit') */
+    footer {
+        visibility: hidden !important;
+        height: 0px !important;
+    }
+
+    /* Ocultar botón 'Deploy' de la barra superior */
+    .stDeployButton {
+        display: none !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 
 # ==============================================================================
 # CARGA DE RECURSOS EN MEMORIA (REGLA DE ORO: CERO REENTRENAMIENTO)
