@@ -26,14 +26,20 @@ if str(raiz) not in sys.path:
     sys.path.insert(0, str(raiz))
 
 from src.evaluate import normalizar_shap
-from src.model import cargar_paquete_modelo, predecir_falla
+from src.model import cargar_paquete_modelo, mapear_shap_a_canales_fisicos, predecir_falla
 from src.utils import (
     COLUMNAS,
     NOTA_CLASES,
     ORDEN_CLASES,
+    RANGO_CORRIENTE,
+    RANGO_VOLTAJE,
+    UMBRAL_CONFIANZA_MINIMA,
+    UMBRAL_RETORNO_TIERRA_A,
     cargar_json,
+    determinar_estados_fases,
     obtener_ruta_datos_procesados,
     obtener_ruta_resultados,
+    validar_rango_senales,
 )
 
 # ==============================================================================
@@ -1489,6 +1495,8 @@ def pagina_diagnostico_tiempo_real():
             st.session_state.widget_ib = 63.27
             st.session_state.widget_ic = -45.92
         st.session_state.mostrar_aviso_incompletos = False
+        st.session_state.mostrar_aviso_fuera_rango = False
+        st.session_state.detalles_fuera_rango = []
         st.session_state.verificado = False
 
     def cb_limpiar_campos():
@@ -1499,6 +1507,8 @@ def pagina_diagnostico_tiempo_real():
         st.session_state.widget_ib = None
         st.session_state.widget_ic = None
         st.session_state.mostrar_aviso_incompletos = False
+        st.session_state.mostrar_aviso_fuera_rango = False
+        st.session_state.detalles_fuera_rango = []
         st.session_state.verificado = False
 
     def cb_verificar_diagnostico():
@@ -1512,9 +1522,29 @@ def pagina_diagnostico_tiempo_real():
         ]
         if any(v is None for v in valores):
             st.session_state.mostrar_aviso_incompletos = True
+            st.session_state.mostrar_aviso_fuera_rango = False
+            st.session_state.detalles_fuera_rango = []
+            st.session_state.verificado = False
+            return
+
+        st.session_state.mostrar_aviso_incompletos = False
+
+        # Validación física del rango de entrenamiento (Observación 1 de Jorge)
+        es_valido, anomalias = validar_rango_senales(
+            Va=float(valores[0]),
+            Vb=float(valores[1]),
+            Vc=float(valores[2]),
+            Ia=float(valores[3]),
+            Ib=float(valores[4]),
+            Ic=float(valores[5]),
+        )
+        if not es_valido:
+            st.session_state.mostrar_aviso_fuera_rango = True
+            st.session_state.detalles_fuera_rango = anomalias
             st.session_state.verificado = False
         else:
-            st.session_state.mostrar_aviso_incompletos = False
+            st.session_state.mostrar_aviso_fuera_rango = False
+            st.session_state.detalles_fuera_rango = []
             st.session_state.verificado = True
 
     # --------------------------------------------------------------------------
@@ -1691,10 +1721,20 @@ def pagina_diagnostico_tiempo_real():
                 )
 
     # --------------------------------------------------------------------------
-    # ALERTA DE CAMPOS INCOMPLETOS
+    # ALERTA DE CAMPOS INCOMPLETOS O FUERA DE RANGO DE ENTRENAMIENTO
     # --------------------------------------------------------------------------
     if st.session_state.get("mostrar_aviso_incompletos", False):
-        st.warning("Por favor ingrese valores numéricos en todas las fases antes de verificar el diagnóstico.")
+        st.warning("⚠️ Por favor ingrese valores numéricos en todas las fases antes de verificar el diagnóstico.")
+
+    if st.session_state.get("mostrar_aviso_fuera_rango", False):
+        anomalias = st.session_state.get("detalles_fuera_rango", [])
+        anomalias_texto = ", ".join(anomalias)
+        st.warning(
+            f"⚠️ **Valor fuera del rango de entrenamiento:** {anomalias_texto}.\n\n"
+            f"Este modelo solo aprendió con voltajes entre {RANGO_VOLTAJE[0]} y {RANGO_VOLTAJE[1]} p.u. "
+            f"y corrientes entre {RANGO_CORRIENTE[0]:.0f} y {RANGO_CORRIENTE[1]:.0f} A. "
+            "Por seguridad operativa, y evitar falsos resultados, **no se emite diagnóstico** ante valores fuera del dominio de entrenamiento."
+        )
 
     # --------------------------------------------------------------------------
     # FILA DE ACCIONES (BOTONES LIMPIAR Y VERIFICAR CON ESPACIADO ENTRE ELLOS)
@@ -1731,6 +1771,9 @@ def pagina_diagnostico_tiempo_real():
     confianza_pct = resultado["confianza"] * 100.0
     mensaje_operador = resultado["mensaje_operador"]
     probabilidades = resultado["probabilidades"]
+    fases_afectadas = resultado.get("fases_afectadas", [])
+    desc_fases = resultado.get("descripcion_fases", "")
+    rotacion_ganadora = resultado.get("rotacion_utilizada", "ABC")
 
     # --------------------------------------------------------------------------
     # PASO 2: MONITOREO VISUAL (SINÓPTICO Y OSCILOGRAMA)
@@ -1748,13 +1791,15 @@ def pagina_diagnostico_tiempo_real():
         unsafe_allow_html=True,
     )
 
-    falla_a = diag_clase in ["LG", "LLG", "Trifásica"] or abs(val_ia) > 180
-    falla_b = diag_clase in ["LL", "LLG", "Trifásica"] or abs(val_ib) > 180
-    falla_c = diag_clase in ["LL", "Trifásica"] or abs(val_ic) > 180
-    falla_g = diag_clase in ["LG", "LLG"]
     corriente_n = val_ia + val_ib + val_ic
+    # Sincronización estricta: Normal sale 100% en verde, y cada falla activa exactamente sus fases
+    falla_a, falla_b, falla_c, falla_g = determinar_estados_fases(
+        diag_clase=diag_clase,
+        corriente_n=corriente_n,
+        fases_afectadas=fases_afectadas,
+    )
 
-    st.markdown(
+    render_html(
         f"""
         <div class="synoptic-grid">
             <div class="synoptic-cell {'synoptic-cell-fault' if falla_a else 'synoptic-cell-nominal'}">
@@ -1796,15 +1841,14 @@ def pagina_diagnostico_tiempo_real():
             <div class="synoptic-cell {'synoptic-cell-fault' if falla_g else 'synoptic-cell-nominal'}">
                 <div class="synoptic-title" style="color: #292929;">NEUTRO / TIERRA (G)</div>
                 <div class="synoptic-status" style="color: {'#dc2626' if falla_g else '#059669'};">
-                    {'RETORNO ACTIVO (TIERRA)' if falla_g else 'AISLADO (SIN RETORNO)'}
+                    {'RETORNO POR TIERRA' if falla_g else 'AISLADO (SIN RETORNO)'}
                 </div>
                 <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: #475569; margin-top: 0.2rem;">
                     In = {corriente_n:.1f} A
                 </div>
             </div>
         </div>
-        """,
-        unsafe_allow_html=True,
+        """
     )
 
     # Oscilograma
@@ -1892,54 +1936,99 @@ def pagina_diagnostico_tiempo_real():
     elif diag_clase == "LG":
         hud_css = "hud-card-alert"
         estado_badge = "FALLA MONOFÁSICA A TIERRA"
-        titulo_diag = "Falla Línea a Tierra (LG - Fase A)"
-        subtitulo_diag = "Pérdida de aislamiento entre fase activa y tierra. Fuerte circulación de corriente homopolar."
+        titulo_diag = f"Falla Línea a Tierra (LG - {desc_fases})"
+        subtitulo_diag = f"Pérdida de aislamiento entre {desc_fases.lower()} y tierra. Fuerte circulación de corriente homopolar."
         orden_rele = "DISPARO SELECTIVO DE FASE"
-        paso_1 = "Verificar disparo monopolar del relé 50/51N sobre el polo de Fase A."
-        paso_2 = "Monitorear elevación de tensión en fases sanas B y C por desplazamiento del neutro."
+        paso_1 = f"Verificar disparo monopolar del relé 50/51N sobre el polo de {desc_fases}."
+        paso_2 = "Monitorear elevación de tensión en fases sanas por desplazamiento del neutro."
         paso_3 = "Inspeccionar aisladores de soporte y descargadores de sobretensión en la bahía afectada."
     elif diag_clase == "LL":
         hud_css = "hud-card-alert"
         estado_badge = "FALLA BIFÁSICA ENTRE FASES"
-        titulo_diag = "Falla Línea a Línea (LL - Fases B-C)"
-        subtitulo_diag = "Cortocircuito franco entre dos fases de potencia sin contacto con la malla de tierra."
+        titulo_diag = f"Falla Línea a Línea (LL - {desc_fases})"
+        subtitulo_diag = f"Cortocircuito franco entre {desc_fases.lower()} sin contacto con la malla de tierra."
         orden_rele = "DISPARO BIPOLAR DE FASES"
-        paso_1 = "Comandar apertura rápida de los polos asociados a las fases B y C."
+        paso_1 = f"Comandar apertura rápida de los polos asociados a {desc_fases}."
         paso_2 = "Comprobar que no exista contacto secundario con el conductor de guardia o tierra."
         paso_3 = "Despejar tramo y verificar distanciamiento mecánico entre conductores aéreos."
     else:
         hud_css = "hud-card-alert"
         estado_badge = "FALLA DOBLE A TIERRA"
-        titulo_diag = "Falla Doble Línea a Tierra (LLG)"
-        subtitulo_diag = "Dos fases en cortocircuito simultáneo entre sí y conectadas a la malla de tierra."
+        titulo_diag = f"Falla Doble Línea a Tierra (LLG - {desc_fases})"
+        subtitulo_diag = f"Dos fases en cortocircuito simultáneo ({desc_fases.lower()}) y conectadas a la malla de tierra."
         orden_rele = "DISPARO DE PROTECCIÓN HOMOPOLAR (51N)"
-        paso_1 = "Disparo tripolar de despeje rápido para contener corrientes de choque superiores a 800 A."
+        paso_1 = f"Comandar apertura rápida de los polos asociados a {desc_fases}."
         paso_2 = "Inspeccionar transformador de puesta a tierra y estado térmico del conductor de neutro."
         paso_3 = "Revisar punto de convergencia física del fallo antes de autorizar cualquier maniobra."
 
+    es_baja_confianza = bool(confianza_pct < (UMBRAL_CONFIANZA_MINIMA * 100.0))
+
+    if es_baja_confianza:
+        st.warning(
+            f"⚠️ **Diagnóstico poco confiable (Confianza: {confianza_pct:.1f}% < 80%)**: "
+            "El modelo presenta baja certeza probabilística y duda ante el patrón de señales ingresado. "
+            "Se recomienda verificar físicamente las lecturas o contrastar con relés de respaldo antes de ejecutar maniobras."
+        )
+
     col_hud, col_despacho = st.columns(2, gap="medium")
 
+    # Indicador de porcentaje de confianza y badge de fiabilidad junto al título
+    color_confianza = "#dc2626" if es_baja_confianza else "#059669"
+    badge_confianza_html = (
+        f"<span style='font-size: 0.92rem; font-weight: 700; color: {color_confianza}; margin-left: 0.5rem;'>"
+        f"— {confianza_pct:.1f}% de confianza</span>"
+    )
+    aviso_poco_confiable_badge = (
+        "<div style='margin-top: 0.4rem;'>"
+        "<span style='background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; font-size: 0.78rem; "
+        "font-weight: 700; padding: 2px 10px; border-radius: 9999px;'>⚠️ Diagnóstico poco confiable (&lt; 80%)</span>"
+        "</div>"
+        if es_baja_confianza
+        else ""
+    )
+
+    desc_hud_completa = subtitulo_diag
+    if es_baja_confianza:
+        desc_hud_completa += (
+            f"<div style='margin-top: 0.4rem; color: #b91c1c; font-weight: 600; font-size: 0.8rem;'>"
+            f"Aviso: Diagnóstico poco confiable ({confianza_pct:.1f}%). El modelo no reconoce con certeza este estado."
+            f"</div>"
+        )
+
+    pill_certeza_style = "style='border-color: #fca5a5; background: #fff5f5; color: #991b1b; font-weight: 700;'" if es_baja_confianza else ""
+    pill_certeza_val = f"{confianza_pct:.1f}% {'(Baja)' if es_baja_confianza else ''}"
+
     with col_hud:
-        st.markdown(
+        render_html(
             f"""
             <div class="hud-card {hud_css}">
                 <div>
                     <span class="hud-badge">{estado_badge}</span>
-                    <div class="hud-title">{titulo_diag}</div>
-                    <div class="hud-desc">{subtitulo_diag}</div>
+                    <div class="hud-title">{titulo_diag} {badge_confianza_html}</div>
+                    {aviso_poco_confiable_badge}
+                    <div class="hud-desc">{desc_hud_completa}</div>
                 </div>
                 <div class="hud-pills-row">
-                    <span class="hud-pill"><span class="hud-pill-tag">Certeza:</span><span class="hud-pill-val">{confianza_pct:.1f}%</span></span>
+                    <span class="hud-pill" {pill_certeza_style}><span class="hud-pill-tag">Certeza:</span><span class="hud-pill-val">{pill_certeza_val}</span></span>
                     <span class="hud-pill"><span class="hud-pill-tag">Latencia:</span><span class="hud-pill-val">{latencia_ms:.2f} ms</span></span>
                     <span class="hud-pill"><span class="hud-pill-tag">Protección:</span><span class="hud-pill-val">{orden_rele}</span></span>
                 </div>
             </div>
-            """,
-            unsafe_allow_html=True,
+            """
         )
 
+    alerta_despacho_html = (
+        f"""
+        <div style="font-size: 0.8rem; color: #991b1b; background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 6px 10px; margin-top: 0.5rem; line-height: 1.4;">
+            ⚠️ <strong>Aviso de Fiabilidad:</strong> Diagnóstico poco confiable ({confianza_pct:.1f}%). Proceda con verificación de campo antes de autorizar maniobras en interruptores.
+        </div>
+        """
+        if es_baja_confianza
+        else ""
+    )
+
     with col_despacho:
-        st.markdown(
+        render_html(
             f"""
             <div class="dispatch-card">
                 <div class="dispatch-header">
@@ -1950,12 +2039,12 @@ def pagina_diagnostico_tiempo_real():
                     <div class="dispatch-step"><strong>2. Seguridad:</strong> {paso_2}</div>
                     <div class="dispatch-step"><strong>3. Inspección:</strong> {paso_3}</div>
                 </div>
+                {alerta_despacho_html}
                 <div style="font-size: 0.78rem; color: #64748b; margin-top: 0.5rem; border-top: 1px solid #e2e8f0; padding-top: 0.4rem;">
                     Recomendación del sistema: {mensaje_operador}
                 </div>
             </div>
-            """,
-            unsafe_allow_html=True,
+            """
         )
 
     # --------------------------------------------------------------------------
@@ -1982,9 +2071,11 @@ def pagina_diagnostico_tiempo_real():
     clases_modelo = list(modelo_rf.classes_)
     idx_diag = clases_modelo.index(diag_clase)
 
-    sv_raw = explicador.shap_values(fila_actual)
+    fila_evaluada = resultado.get("fila_alineada", fila_actual)
+    sv_raw = explicador.shap_values(fila_evaluada)
     sv_norm = normalizar_shap(sv_raw, 1, len(COLUMNAS), len(clases_modelo))
-    valores_shap = sv_norm[0, :, idx_diag]
+    valores_shap_slots = sv_norm[0, :, idx_diag]
+    valores_shap = mapear_shap_a_canales_fisicos(valores_shap_slots, rotacion=rotacion_ganadora)
 
     col_prob, col_shap = st.columns([1, 1], gap="medium")
 

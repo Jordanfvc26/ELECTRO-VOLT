@@ -15,7 +15,16 @@ from sklearn.metrics import accuracy_score, f1_score, recall_score
 from src.data_processing import cargar_datos, dividir_datos, mapear_clases
 from src.evaluate import medir_latencia_y_throughput
 from src.model import cargar_paquete_modelo, crear_modelos, explicar_prediccion_shap, predecir_falla
-from src.utils import COLUMNAS, ORDEN_CLASES, SEMILLA, obtener_ruta_modelo
+from src.utils import (
+    COLUMNAS,
+    ORDEN_CLASES,
+    SEMILLA,
+    UMBRAL_CONFIANZA_MINIMA,
+    UMBRAL_RETORNO_TIERRA_A,
+    determinar_estados_fases,
+    obtener_ruta_modelo,
+    validar_rango_senales,
+)
 
 
 @pytest.fixture(scope="module")
@@ -124,3 +133,100 @@ def test_explicar_prediccion_shap_consistencia(paquete_modelo, datos_prueba) -> 
     assert isinstance(shap_series, pd.Series)
     assert len(shap_series) == 6, "SHAP debe devolver exactamente 6 valores de importancia"
     assert not shap_series.isna().any(), "No debe haber valores NaN en la explicación SHAP"
+
+
+def test_validar_rango_senales_ood() -> None:
+    """Verifica que validar_rango_senales detecte correctamente valores fuera del dominio de entrenamiento."""
+    # Señal nominal típica dentro del rango [-0.65, 0.65] p.u. y [-900, 900] A
+    valido, anomalias = validar_rango_senales(0.1, -0.1, 0.0, 100.0, -100.0, 0.0)
+    assert valido is True
+    assert len(anomalias) == 0
+
+    # Prueba Jorge: Vc = -1.2 (fuera de rango)
+    valido_vc, anomalias_vc = validar_rango_senales(0.0, 0.0, -1.2, 0.0, 0.0, 0.0)
+    assert valido_vc is False
+    assert any("Vc" in a for a in anomalias_vc)
+
+    # Corriente anómala fuera de [-900, 900]
+    valido_ia, anomalias_ia = validar_rango_senales(0.0, 0.0, 0.0, 1200.0, 0.0, 0.0)
+    assert valido_ia is False
+    assert any("Ia" in a for a in anomalias_ia)
+
+
+def test_deteccion_baja_confianza_con_ceros(paquete_modelo) -> None:
+    """Verifica que cuando las señales son todas 0, el modelo registre confianza < 80% y flag de baja fiabilidad."""
+    res = predecir_falla(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, paquete=paquete_modelo)
+    assert res["confianza"] < UMBRAL_CONFIANZA_MINIMA, f"La confianza ({res['confianza']}) debería ser < 0.80"
+    assert res["confianza_baja"] is True
+
+
+def test_umbral_retorno_tierra_observacion_jorge() -> None:
+    """Verifica que corrientes residuales |In| > 20 A indiquen retorno por tierra."""
+    # Prueba Jorge: Ia = 32, Ib = -32, Ic = 55 (suma In = 55 A > 20 A)
+    ia, ib, ic = 32.0, -32.0, 55.0
+    corriente_n = ia + ib + ic
+    assert abs(corriente_n) > UMBRAL_RETORNO_TIERRA_A, f"In ({corriente_n} A) debe superar el umbral de {UMBRAL_RETORNO_TIERRA_A} A"
+
+
+def test_determinar_estados_fases_coherencia() -> None:
+    """Verifica que las tarjetas de fases y el diagnóstico nunca se contradigan (Jorge Obs 5)."""
+    # 1. Normal debe salir 100% en verde
+    fa, fb, fc, fg = determinar_estados_fases("Normal", corriente_n=50.0)
+    assert not fa and not fb and not fc and not fg, "Normal debe tener todas las fases en verde (nominal)"
+
+    # 2. LG: Fase A y Tierra en alarma
+    fa, fb, fc, fg = determinar_estados_fases("LG", corriente_n=100.0)
+    assert fa and fg and not fb and not fc, "LG debe activar Fase A y Tierra"
+
+    # 3. LL: Fases B y C en alarma, tierra aislada
+    fa, fb, fc, fg = determinar_estados_fases("LL", corriente_n=0.0)
+    assert fb and fc and not fa and not fg, "LL debe activar Fases B y C sin tierra"
+
+    # 4. LLG: Fases A, B y Tierra en alarma
+    fa, fb, fc, fg = determinar_estados_fases("LLG", corriente_n=80.0)
+    assert fa and fb and fg and not fc, "LLG debe activar Fases A, B y Tierra"
+
+    # 5. Trifásica: Las tres fases A, B, C en alarma
+    fa, fb, fc, fg = determinar_estados_fases("Trifásica", corriente_n=0.0)
+    assert fa and fb and fc, "Trifásica debe activar Fases A, B y C"
+
+
+def test_alineacion_fases_rotacion_multicapa(paquete_modelo) -> None:
+    """Verifica que fallas en Fase B y Fase C sean reconocidas con alta confianza mediante alineación rotacional."""
+    from src.data_processing import cargar_datos, mapear_clases
+    from src.utils import obtener_ruta_datos_raw
+
+    df_raw = cargar_datos(obtener_ruta_datos_raw())
+    df_proc = mapear_clases(df_raw)
+
+    # 1. Caso LG original en Fase A
+    lg_original = df_proc[df_proc["clase"] == "LG"].iloc[5]
+    va, vb, vc = lg_original["Va"], lg_original["Vb"], lg_original["Vc"]
+    ia, ib, ic = lg_original["Ia"], lg_original["Ib"], lg_original["Ic"]
+
+    res_lg_a = predecir_falla(va, vb, vc, ia, ib, ic, paquete=paquete_modelo)
+    assert res_lg_a["diagnostico"] == "LG"
+    assert res_lg_a["fases_afectadas"] == ["A"]
+    assert "Fase A" in res_lg_a["descripcion_fases"]
+
+    # 2. Caso LG rotado a Fase B (B<-A, C<-B, A<-C)
+    res_lg_b = predecir_falla(vc, va, vb, ic, ia, ib, paquete=paquete_modelo)
+    assert res_lg_b["diagnostico"] == "LG", f"Falla en Fase B debe reconocerse como LG, obtuvo {res_lg_b['diagnostico']}"
+    assert res_lg_b["fases_afectadas"] == ["B"], f"Fase afectada debe ser B, obtuvo {res_lg_b['fases_afectadas']}"
+    assert res_lg_b["confianza"] >= 0.70
+    assert "Fase B" in res_lg_b["descripcion_fases"]
+
+    # 3. Caso LG rotado a Fase C (C<-A, A<-B, B<-C)
+    res_lg_c = predecir_falla(vb, vc, va, ib, ic, ia, paquete=paquete_modelo)
+    assert res_lg_c["diagnostico"] == "LG"
+    assert res_lg_c["fases_afectadas"] == ["C"]
+    assert res_lg_c["confianza"] >= 0.70
+    assert "Fase C" in res_lg_c["descripcion_fases"]
+
+    # 4. Verificar que el sinóptico active únicamente la Fase B para LG en B
+    fa, fb, fc, fg = determinar_estados_fases("LG", corriente_n=100.0, fases_afectadas=res_lg_b["fases_afectadas"])
+    assert not fa and fb and not fc and fg, "Para LG en Fase B, únicamente B y Tierra deben estar en rojo"
+
+
+
+

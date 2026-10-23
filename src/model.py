@@ -26,6 +26,7 @@ from src.utils import (
     NOTA_CLASES,
     ORDEN_CLASES,
     SEMILLA,
+    UMBRAL_CONFIANZA_MINIMA,
     obtener_raiz_proyecto,
     obtener_ruta_modelo,
 )
@@ -118,6 +119,44 @@ def cargar_paquete_modelo(ruta_modelo: Path | str | None = None) -> Dict[str, An
     return paquete
 
 
+def mapear_shap_a_canales_fisicos(
+    valores_shap_slots: np.ndarray,
+    rotacion: str = "ABC",
+) -> np.ndarray:
+    """Mapea las atribuciones SHAP desde los slots del modelo hacia los canales físicos (Va, Vb, Vc, Ia, Ib, Ic).
+
+    Args:
+        valores_shap_slots: Array 1D de 6 valores SHAP calculados sobre los slots del modelo.
+        rotacion: Identificador de la rotación cíclica utilizada ('ABC', 'BCA', 'CAB').
+
+    Returns:
+        Array 1D de 6 valores SHAP ordenados según los conductores físicos canónicos.
+    """
+    if rotacion == "ABC":
+        return valores_shap_slots
+    elif rotacion == "BCA":
+        # Slot A'<-B, Slot B'<-C, Slot C'<-A
+        return np.array([
+            valores_shap_slots[2],  # Va = Vc'
+            valores_shap_slots[0],  # Vb = Va'
+            valores_shap_slots[1],  # Vc = Vb'
+            valores_shap_slots[5],  # Ia = Ic'
+            valores_shap_slots[3],  # Ib = Ia'
+            valores_shap_slots[4],  # Ic = Ib'
+        ])
+    elif rotacion == "CAB":
+        # Slot A'<-C, Slot B'<-A, Slot C'<-B
+        return np.array([
+            valores_shap_slots[1],  # Va = Vb'
+            valores_shap_slots[2],  # Vb = Vc'
+            valores_shap_slots[0],  # Vc = Va'
+            valores_shap_slots[4],  # Ia = Ib'
+            valores_shap_slots[5],  # Ib = Ic'
+            valores_shap_slots[3],  # Ic = Ia'
+        ])
+    return valores_shap_slots
+
+
 def predecir_falla(
     Va: float,
     Vb: float,
@@ -129,8 +168,10 @@ def predecir_falla(
 ) -> Dict[str, Any]:
     """Ejecuta la inferencia diagnóstica a partir de las 6 señales eléctricas trifásicas.
 
-    Función idéntica al contrato de la celda c24 de Jorge. Calcula la predicción,
-    confianza probabilística y extrae el mensaje de maniobra técnica para el operador.
+    Aplica Alineación Rotacional de Fases en Inferencia (Test-Time Phase Alignment) para resolver
+    el sesgo topológico del dataset (que solo contenía LG en A, LL en BC y LLG en AB).
+    Evalúa las 3 permutaciones cíclicas directas (+120° y +240°) preservando la secuencia positiva
+    e identifica con exactitud la clase de fallo y las fases involucradas.
 
     Args:
         Va: Tensión Fase A (en p.u.)
@@ -145,28 +186,100 @@ def predecir_falla(
         Diccionario con las claves:
         - diagnostico: Etiqueta de la falla detectada ('Normal', 'LG', 'LL', 'LLG', 'Trifásica').
         - confianza: Nivel de certeza de la clase ganadora (entre 0.0 y 1.0).
+        - confianza_baja: Booleano True si confianza < 0.80.
         - probabilidades: Diccionario clase -> probabilidad.
         - mensaje_operador: Recomendación técnica para el operador.
+        - fases_afectadas: Lista de fases comprometidas (ej. ['B'], ['A', 'B'], ['A', 'B', 'C'], []).
+        - descripcion_fases: Texto legible de fases (ej. 'Fase B a Tierra', 'Fases A-B', etc.).
+        - rotacion_utilizada: Identificador de la permutación ganadora ('ABC', 'BCA', 'CAB').
+        - fila_alineada: DataFrame de 1 fila con las señales alineadas al marco de referencia del modelo.
     """
     if paquete is None:
         paquete = cargar_paquete_modelo()
 
     columnas = paquete.get("columnas", COLUMNAS)
-    fila = pd.DataFrame([{"Va": Va, "Vb": Vb, "Vc": Vc, "Ia": Ia, "Ib": Ib, "Ic": Ic}])[columnas]
-
     modelo = paquete["modelo"]
-    probs = modelo.predict_proba(fila)[0]
-    k = int(np.argmax(probs))
-    diag = str(modelo.classes_[k])
+
+    # 3 permutaciones cíclicas directas del grupo C3 (preservan secuencia positiva)
+    rotaciones = [
+        {"rotacion": "ABC", "mapping": ("A", "B", "C"), "Va": Va, "Vb": Vb, "Vc": Vc, "Ia": Ia, "Ib": Ib, "Ic": Ic},
+        {"rotacion": "BCA", "mapping": ("B", "C", "A"), "Va": Vb, "Vb": Vc, "Vc": Va, "Ia": Ib, "Ib": Ic, "Ic": Ia},
+        {"rotacion": "CAB", "mapping": ("C", "A", "B"), "Va": Vc, "Vb": Va, "Vc": Vb, "Ia": Ic, "Ib": Ia, "Ic": Ib},
+    ]
+
+    df_candidatos = pd.DataFrame(rotaciones)[columnas]
+    probs_todos = modelo.predict_proba(df_candidatos)
+
+    candidatos_evaluados = []
+    for i, rot in enumerate(rotaciones):
+        probs_i = probs_todos[i]
+        k_i = int(np.argmax(probs_i))
+        diag_i = str(modelo.classes_[k_i])
+        conf_i = round(float(probs_i[k_i]), 4)
+        mapping_i = rot["mapping"]
+
+        # Identificación de topología física de fases según el entrenamiento del dataset
+        if diag_i == "Normal":
+            fases_i: List[str] = []
+            desc_i = "Ninguna (Operación Normal)"
+        elif diag_i == "LG":
+            # En el dataset, LG ocurre exclusivamente en el slot A' a tierra
+            fases_i = [mapping_i[0]]
+            desc_i = f"Fase {mapping_i[0]} a Tierra"
+        elif diag_i == "LL":
+            # En el dataset, LL ocurre exclusivamente entre slots B' y C'
+            fases_i = sorted([mapping_i[1], mapping_i[2]])
+            desc_i = f"Fases {fases_i[0]}-{fases_i[1]}"
+        elif diag_i == "LLG":
+            # En el dataset, LLG ocurre exclusivamente entre slots A' y B' a tierra
+            fases_i = sorted([mapping_i[0], mapping_i[1]])
+            desc_i = f"Fases {fases_i[0]}-{fases_i[1]} a Tierra"
+        elif diag_i == "Trifásica":
+            fases_i = ["A", "B", "C"]
+            desc_i = "Fases A-B-C"
+        else:
+            fases_i = []
+            desc_i = diag_i
+
+        candidatos_evaluados.append({
+            "rotacion": rot["rotacion"],
+            "mapping": mapping_i,
+            "diagnostico": diag_i,
+            "confianza": conf_i,
+            "confianza_baja": bool(conf_i < UMBRAL_CONFIANZA_MINIMA),
+            "probabilidades": {str(c): round(float(p), 4) for c, p in zip(modelo.classes_, probs_i)},
+            "fases_afectadas": fases_i,
+            "descripcion_fases": desc_i,
+            "fila_alineada": df_candidatos.iloc[[i]],
+        })
+
+    # Criterio de Selección del Ganador:
+    # 1. Si el candidato canónico ABC detecta Normal con confianza >= 0.80, la red está en operación nominal.
+    cand_abc = candidatos_evaluados[0]
+    if cand_abc["diagnostico"] == "Normal" and cand_abc["confianza"] >= UMBRAL_CONFIANZA_MINIMA:
+        ganador = cand_abc
+    else:
+        # Entre los candidatos que detectan perturbación (falla), seleccionar el de mayor confianza.
+        cands_falla = [c for c in candidatos_evaluados if c["diagnostico"] != "Normal"]
+        if cands_falla:
+            ganador = max(cands_falla, key=lambda c: c["confianza"])
+        else:
+            ganador = max(candidatos_evaluados, key=lambda c: c["confianza"])
 
     mensajes = paquete.get("mensajes_operador", MENSAJES_OPERADOR)
-    mensaje_op = mensajes.get(diag, f"Falla detectada: {diag}. Proceder según protocolo.")
+    diag_final = ganador["diagnostico"]
+    mensaje_op = mensajes.get(diag_final, f"Falla detectada: {diag_final}. Proceder según protocolo.")
 
     return {
-        "diagnostico": diag,
-        "confianza": round(float(probs[k]), 4),
-        "probabilidades": {str(c): round(float(p), 4) for c, p in zip(modelo.classes_, probs)},
+        "diagnostico": diag_final,
+        "confianza": ganador["confianza"],
+        "confianza_baja": ganador["confianza_baja"],
+        "probabilidades": ganador["probabilidades"],
         "mensaje_operador": mensaje_op,
+        "fases_afectadas": ganador["fases_afectadas"],
+        "descripcion_fases": ganador["descripcion_fases"],
+        "rotacion_utilizada": ganador["rotacion"],
+        "fila_alineada": ganador["fila_alineada"],
     }
 
 
@@ -174,16 +287,19 @@ def explicar_prediccion_shap(
     paquete: Dict[str, Any],
     fila_df: pd.DataFrame,
     explicador: Any | None = None,
+    rotacion: str = "ABC",
 ) -> pd.Series:
     """Calcula la atribución de importancia local (SHAP) para una lectura individual.
 
     Responde por qué el modelo emitió cierto diagnóstico y qué variables de fase
-    contribuyeron positiva o negativamente a la decisión.
+    contribuyeron positiva o negativamente a la decisión. Si se empleó alineación de fases,
+    mapea los aportes de los slots a las variables físicas reales.
 
     Args:
         paquete: Diccionario del modelo serializado.
-        fila_df: DataFrame con exactamente 1 fila y las 6 columnas en el orden canónico.
+        fila_df: DataFrame con exactamente 1 fila y las 6 columnas canónicas o alineadas.
         explicador: TreeExplainer opcional pre-instanciado para optimizar latencia.
+        rotacion: Cadena con la rotación empleada ('ABC', 'BCA', 'CAB').
 
     Returns:
         Series de pandas con los valores SHAP por variable para la clase predicha.
@@ -209,10 +325,14 @@ def explicar_prediccion_shap(
 
     sv_crudo = explicador.shap_values(fila_ordenada)
     sv_norm = normalizar_shap(sv_crudo, 1, len(columnas), len(clases))
-    valores_clase = sv_norm[0, :, idx_clase]
+    valores_clase_slots = sv_norm[0, :, idx_clase]
+
+    # Mapear a canales físicos reales si hubo rotación
+    valores_clase = mapear_shap_a_canales_fisicos(valores_clase_slots, rotacion=rotacion)
 
     etiquetas_variables = [
         f"{c} = {fila_ordenada.iloc[0][c]:.2f}" for c in columnas
     ]
 
     return pd.Series(valores_clase, index=etiquetas_variables)
+
