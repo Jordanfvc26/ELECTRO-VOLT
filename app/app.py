@@ -51,20 +51,37 @@ st.set_page_config(
 st.markdown(
     """
     <style>
-    /* Ocultar badge flotante inferior derecho ('Created by ...' / Streamlit Community Cloud) */
-    div[class*="viewerBadge"] {
+    /* 1. Ocultar badges flotantes de Streamlit Community Cloud (overlay inferior derecho) */
+    div[class*="viewerBadge"],
+    div[class*="ProfileContainer"],
+    div[class*="profileContainer"],
+    div[class*="manageApp"],
+    div[class*="ManageApp"],
+    [data-testid="manage-app-button"],
+    [data-testid="stStatusWidget"] {
         display: none !important;
+        visibility: hidden !important;
     }
 
-    /* Ocultar pie de página predeterminado ('Made with Streamlit') */
-    footer {
+    /* 2. Ocultar únicamente el pie de página predeterminado de Streamlit ("Made with Streamlit")
+          SIN afectar el footer corporativo de ElectroVOLT */
+    footer:not(.custom-footer-strip) {
+        display: none !important;
         visibility: hidden !important;
         height: 0px !important;
     }
 
-    /* Ocultar botón 'Deploy' de la barra superior */
-    .stDeployButton {
+    /* 3. Asegurar visibilidad total del footer corporativo de la aplicación */
+    .custom-footer-strip {
+        display: block !important;
+        visibility: visible !important;
+    }
+
+    /* 4. Ocultar botón 'Deploy' de la barra superior */
+    .stDeployButton,
+    .stAppDeployButton {
         display: none !important;
+        visibility: hidden !important;
     }
     </style>
     """,
