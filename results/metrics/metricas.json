@@ -1,5 +1,6 @@
 {
   "modelo": "Random Forest",
+  "algoritmo": "RandomForestClassifier(n_estimators=100, class_weight='balanced', random_state=42)",
   "clases": [
     "Normal",
     "LG",
@@ -16,18 +17,72 @@
     "Ic"
   ],
   "accuracy_prueba": 0.9994,
-  "f1_macro_prueba": 0.9996,
-  "recall_minimo_por_clase": 0.9979,
+  "f1_macro_prueba": 0.9991,
+  "recall_minimo_por_clase": 0.9956,
   "latencia_ms": 16.83,
   "throughput_muestras_por_segundo": 70138.4,
   "tiempo_entrenamiento_s": 0.89,
-  "nota_clases": "LLL y LLLG se unieron en una sola clase 'Trifásica' porque en una falla trifásica balanceada la conexión a tierra no lleva corriente y las señales de fase son las mismas.",
+  "resultados_medidos_prueba": {
+    "total_muestras_prueba": 1573,
+    "aciertos": 1572,
+    "accuracy_prueba": 0.9994,
+    "f1_macro_prueba": 0.9991,
+    "precision_macro_prueba": 0.9990,
+    "recall_macro_prueba": 0.9991,
+    "recall_minimo_por_clase": 0.9956,
+    "latencia_ms": 16.83,
+    "throughput_muestras_por_segundo": 70138.4,
+    "tiempo_entrenamiento_s": 0.89
+  },
+  "validacion_cruzada_estratificada_k5": {
+    "k_folds": 5,
+    "f1_macro_promedio": 0.9991,
+    "desviacion_estandar": 0.0011,
+    "intervalo_confianza_95": [
+      0.998,
+      1.0
+    ]
+  },
+  "metricas_detalladas_por_clase": {
+    "Normal": {
+      "soporte": 473,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1_score": 1.0
+    },
+    "LG": {
+      "soporte": 226,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1_score": 1.0
+    },
+    "LL": {
+      "soporte": 201,
+      "precision": 0.995,
+      "recall": 1.0,
+      "f1_score": 0.9975
+    },
+    "LLG": {
+      "soporte": 227,
+      "precision": 1.0,
+      "recall": 0.9956,
+      "f1_score": 0.9978
+    },
+    "Trifásica": {
+      "soporte": 446,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1_score": 1.0
+    }
+  },
   "cumplimiento_smart": {
-    "Accuracy ≥ 0.90": "Sí",
-    "F1 macro ≥ 0.90": "Sí",
-    "Recall mínimo por clase ≥ 0.85": "Sí",
-    "Latencia por predicción < 100 ms": "Sí",
-    "Throughput ≥ 500 muestras/s": "Sí",
-    "Tiempo de entrenamiento < 5 min": "Sí"
-  }
+    "Accuracy ≥ 0.90": "Sí (0.9994)",
+    "F1 macro ≥ 0.90": "Sí (0.9991)",
+    "Recall mínimo por clase ≥ 0.85": "Sí (0.9956 en LLG)",
+    "Latencia por predicción < 100 ms": "Sí (16.8 ms)",
+    "Throughput ≥ 500 muestras/s": "Sí (70,138 m/s)",
+    "Tiempo de entrenamiento < 5 min": "Sí (0.89 s)"
+  },
+  "nota_clases": "LLL y LLLG se unieron en una sola clase 'Trifásica' porque en una falla trifásica balanceada la conexión a tierra no lleva corriente (In = 0 A) y las señales de fase son físicamente indistinguibles.",
+  "nota_metodologica_datos": "Métricas evaluadas sobre el dataset sintetizado en MATLAB/Simulink (classData.csv). Las proyecciones de impacto operacional (reducción del 80% en tiempo de diagnóstico y ahorro de 20-30% en costos de mantenimiento) son hipótesis de ingeniería a validar formalmente en un piloto de campo."
 }
