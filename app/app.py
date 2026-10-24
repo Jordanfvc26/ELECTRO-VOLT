@@ -1595,7 +1595,9 @@ def pagina_diagnostico_tiempo_real():
                 )
 
                 st.number_input(
-                    "Tensión Va",
+                    "Tensión Va (p.u.)",
+                    min_value=-3.0,
+                    max_value=3.0,
                     step=0.0001,
                     format="%.4f" if st.session_state.widget_va is not None else None,
                     key="widget_va",
@@ -1603,11 +1605,13 @@ def pagina_diagnostico_tiempo_real():
                 )
 
                 st.number_input(
-                    "Corriente Ia",
+                    "Corriente Ia (A)",
+                    min_value=-10000.0,
+                    max_value=10000.0,
                     step=0.01,
                     format="%.2f" if st.session_state.widget_ia is not None else None,
                     key="widget_ia",
-                    help="Corriente instantánea RMS Dinámico registrada por el TC.",
+                    help="Corriente instantánea registrada por el TC.",
                 )
 
                 render_html(
@@ -1642,7 +1646,9 @@ def pagina_diagnostico_tiempo_real():
                 )
 
                 st.number_input(
-                    "Tensión Vb",
+                    "Tensión Vb (p.u.)",
+                    min_value=-3.0,
+                    max_value=3.0,
                     step=0.0001,
                     format="%.4f" if st.session_state.widget_vb is not None else None,
                     key="widget_vb",
@@ -1650,11 +1656,13 @@ def pagina_diagnostico_tiempo_real():
                 )
 
                 st.number_input(
-                    "Corriente Ib",
+                    "Corriente Ib (A)",
+                    min_value=-10000.0,
+                    max_value=10000.0,
                     step=0.01,
                     format="%.2f" if st.session_state.widget_ib is not None else None,
                     key="widget_ib",
-                    help="Corriente instantánea RMS Dinámico registrada por el TC.",
+                    help="Corriente instantánea registrada por el TC.",
                 )
 
                 render_html(
@@ -1689,7 +1697,9 @@ def pagina_diagnostico_tiempo_real():
                 )
 
                 st.number_input(
-                    "Tensión Vc",
+                    "Tensión Vc (p.u.)",
+                    min_value=-3.0,
+                    max_value=3.0,
                     step=0.0001,
                     format="%.4f" if st.session_state.widget_vc is not None else None,
                     key="widget_vc",
@@ -1697,11 +1707,13 @@ def pagina_diagnostico_tiempo_real():
                 )
 
                 st.number_input(
-                    "Corriente Ic",
+                    "Corriente Ic (A)",
+                    min_value=-10000.0,
+                    max_value=10000.0,
                     step=0.01,
                     format="%.2f" if st.session_state.widget_ic is not None else None,
                     key="widget_ic",
-                    help="Corriente instantánea RMS Dinámico registrada por el TC.",
+                    help="Corriente instantánea registrada por el TC.",
                 )
 
                 render_html(
@@ -2192,7 +2204,7 @@ def pagina_diagnostico_tiempo_real():
 def pagina_procesamiento_lote():
     with st.container():
         render_html('<div class="batch-upload-card"></div>')
-        col_up_title, col_up_btn = st.columns([3.8, 1.2], vertical_alignment="center")
+        col_up_title, col_up_btn = st.columns([2.9, 2.1], vertical_alignment="center")
         with col_up_title:
             render_html(
                 """
@@ -2210,8 +2222,27 @@ def pagina_procesamiento_lote():
                 """
             )
         with col_up_btn:
-            if st.button("Datos de prueba", key="btn_cargar_ejemplo_batch", use_container_width=True):
-                st.session_state["usar_ejemplo_batch"] = True
+            btn_col1, btn_col2 = st.columns(2)
+            with btn_col1:
+                if st.button("Datos de prueba", key="btn_cargar_ejemplo_batch", use_container_width=True):
+                    st.session_state["usar_ejemplo_batch"] = True
+            with btn_col2:
+                csv_plantilla = (
+                    "Va,Vb,Vc,Ia,Ib,Ic\n"
+                    "0.40,-0.13,-0.27,-151.29,-9.68,85.80\n"
+                    "-0.37,0.45,-0.08,315.85,-38.83,-277.02\n"
+                    "0.05,-0.25,-0.26,-115.54,422.31,-306.77\n"
+                    "-0.08,0.20,-0.12,652.88,-631.95,-20.93\n"
+                    "-0.01,-0.02,0.03,845.21,-422.60,-422.61\n"
+                )
+                st.download_button(
+                    "Descargar plantilla",
+                    data=csv_plantilla,
+                    file_name="plantilla_senales_electrovolt.csv",
+                    mime="text/csv",
+                    key="btn_descargar_plantilla_batch",
+                    use_container_width=True,
+                )
 
         archivo_csv = st.file_uploader(
             "Arrastre o seleccione su archivo CSV (columnas obligatorias: Va, Vb, Vc, Ia, Ib, Ic):",
