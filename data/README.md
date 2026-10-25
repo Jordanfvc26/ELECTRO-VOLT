@@ -1,4 +1,4 @@
-# Datos del Proyecto ELECTRO-VOLT
+# Datos del Proyecto ELECTROVOLT
 
 Este directorio almacena los conjuntos de datos crudos y procesados para el entrenamiento y evaluación de modelos de detección y clasificación multiclase de fallos eléctricos.
 

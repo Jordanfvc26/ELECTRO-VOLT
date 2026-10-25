@@ -1,4 +1,4 @@
-# Modelos Entrenados de ELECTRO-VOLT
+# Modelos Entrenados de ELECTROVOLT
 
 Este directorio almacena los artefactos serializados de los modelos de Machine Learning entrenados para la clasificación multiclase de fallos eléctricos a partir de las 6 señales continuas de fase (Va, Vb, Vc, Ia, Ib, Ic).
 
@@ -34,7 +34,7 @@ Los archivos `.pkl` y `.joblib` están serializados con `joblib.dump(..., compre
     "columnas": ["Va", "Vb", "Vc", "Ia", "Ib", "Ic"],  # Orden estricto de entrada
     "clases": ["LG", "LL", "LLG", "Normal", "Trifásica"], # Clases del modelo
     "mensajes_operador": {
-        "Normal": "Operación normal. No se detecta falla.",
+        "Normal": "Operación normal.",
         "LG": "Falla de línea a tierra.",
         "LL": "Falla de línea a línea.",
         "LLG": "Falla de doble línea a tierra.",

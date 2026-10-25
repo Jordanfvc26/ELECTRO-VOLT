@@ -1,4 +1,4 @@
-"""Paquete principal de código fuente para el proyecto ELECTRO-VOLT."""
+"""Paquete principal de código fuente para el proyecto ELECTROVOLT."""
 
 from src.utils import (
     COLUMNAS,

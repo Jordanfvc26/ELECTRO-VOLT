@@ -222,7 +222,7 @@ def ejecutar_pipeline_entrenamiento() -> Dict[str, Any]:
         Diccionario con los resultados del pipeline.
     """
     print("=================================================================")
-    print("ELECTRO-VOLT: Iniciando Pipeline de Entrenamiento Modular")
+    print("ELECTROVOLT: Iniciando Pipeline de Entrenamiento Modular")
     print("=================================================================")
 
     # 1. Carga de datos

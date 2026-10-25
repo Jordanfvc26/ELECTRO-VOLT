@@ -1,4 +1,4 @@
-"""Módulo de utilidades y constantes globales para el proyecto ELECTRO-VOLT.
+"""Módulo de utilidades y constantes globales para el proyecto ELECTROVOLT.
 
 Provee configuraciones de reproducibilidad, definiciones de clases eléctricas,
 mensajes operativos estandarizados y utilidades de gestión de rutas y archivos.
@@ -43,7 +43,7 @@ ORDEN_CLASES: List[str] = ["Normal", "LG", "LL", "LLG", "Trifásica"]
 
 # Mensajes normalizados de recomendación y acción técnica para el operador
 MENSAJES_OPERADOR: Dict[str, str] = {
-    "Normal": "Operación normal. No se detecta falla.",
+    "Normal": "Operación normal.",
     "LG": "Falla de línea a tierra.",
     "LL": "Falla de línea a línea.",
     "LLG": "Falla de doble línea a tierra.",
@@ -169,7 +169,7 @@ def determinar_estados_fases(
 # GESTIÓN DE RUTAS RELATIVAS DEL PROYECTO
 # ==============================================================================
 def obtener_raiz_proyecto() -> Path:
-    """Retorna la ruta absoluta del directorio raíz del repositorio ELECTRO-VOLT."""
+    """Retorna la ruta absoluta del directorio raíz del repositorio ELECTROVOLT."""
     return Path(__file__).resolve().parents[1]
 
 
