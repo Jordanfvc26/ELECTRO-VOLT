@@ -95,3 +95,13 @@ def test_shap_explicador_unitaria_dimensiones() -> None:
     valores_clase = sv_norm[0, :, 0]
     assert len(valores_clase) == 6
     assert not np.isnan(valores_clase).any()
+
+
+def test_pagina_error_404_modulo() -> None:
+    """Verifica que la página personalizada 404 importe correctamente y sea ejecutable."""
+    from app.views.not_found import pagina_error_404
+    from app.views import pagina_error_404 as pagina_error_exportada
+
+    assert callable(pagina_error_404), "pagina_error_404 debe ser una función ejecutable"
+    assert pagina_error_404 is pagina_error_exportada, "Debe estar exportada en app.views"
+

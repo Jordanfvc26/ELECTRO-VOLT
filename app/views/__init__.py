@@ -6,6 +6,7 @@ from app.views.auditoria_smart import pagina_auditoria_modelo
 from app.views.que_es import pagina_que_es_electrovolt
 from app.views.privacidad import pagina_politica_privacidad
 from app.views.terminos import pagina_terminos_condiciones
+from app.views.not_found import pagina_error_404
 
 __all__ = [
     "pagina_diagnostico_tiempo_real",
@@ -14,4 +15,5 @@ __all__ = [
     "pagina_que_es_electrovolt",
     "pagina_politica_privacidad",
     "pagina_terminos_condiciones",
+    "pagina_error_404",
 ]

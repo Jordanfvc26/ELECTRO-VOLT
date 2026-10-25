@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import streamlit as st
+from app.seo import inyectar_seo
 from app.styles import aplicar_estilos_css
 from app.utils import render_html
 from app.components.header import render_header
@@ -10,6 +11,14 @@ from app.components.footer import render_footer
 
 def pagina_que_es_electrovolt():
     """Página Institucional: ¿Qué es ElectroVOLT? (/que-es-electrovolt)."""
+    inyectar_seo(
+        titulo="¿Qué es ElectroVOLT? | Plataforma Inteligente para Redes Eléctricas",
+        descripcion=(
+            "Descubre cómo ElectroVOLT predice y clasifica fallos eléctricos trifásicos en subestaciones "
+            "con Machine Learning e Inteligencia Artificial Explicable (SHAP) a costo cero ($0 USD)."
+        ),
+        url_relativa="que-es-electrovolt",
+    )
     aplicar_estilos_css()
     render_header()
 

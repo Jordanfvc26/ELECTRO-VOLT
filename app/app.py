@@ -23,7 +23,10 @@ if raiz not in sys.path:
 if "app" in sys.modules and not hasattr(sys.modules["app"], "__path__"):
     del sys.modules["app"]
 
+from PIL import Image
+
 try:
+    from app.seo import inyectar_seo
     from app.styles import aplicar_estilos_css
     from app.components.header import render_header
     from app.components.navbar import render_navbar
@@ -34,7 +37,9 @@ try:
     from app.views.que_es import pagina_que_es_electrovolt
     from app.views.privacidad import pagina_politica_privacidad
     from app.views.terminos import pagina_terminos_condiciones
+    from app.views.not_found import pagina_error_404
 except (ImportError, ModuleNotFoundError):
+    from seo import inyectar_seo
     from styles import aplicar_estilos_css
     from components.header import render_header
     from components.navbar import render_navbar
@@ -45,12 +50,23 @@ except (ImportError, ModuleNotFoundError):
     from views.que_es import pagina_que_es_electrovolt
     from views.privacidad import pagina_politica_privacidad
     from views.terminos import pagina_terminos_condiciones
+    from views.not_found import pagina_error_404
 
 # ==============================================================================
-# CONFIGURACIÓN DE PÁGINA
+# CONFIGURACIÓN DE PÁGINA (FAVICON OFICIAL Y TÍTULO SEO)
 # ==============================================================================
+ruta_isotipo = Path(__file__).resolve().parents[1] / "src" / "images" / "electrovolt-isotipo.png"
+if ruta_isotipo.exists():
+    try:
+        icono_pestana = Image.open(ruta_isotipo)
+    except Exception:
+        icono_pestana = "⚡"
+else:
+    icono_pestana = "⚡"
+
 st.set_page_config(
-    page_title="ElectroVOLT",
+    page_title="ElectroVOLT — Predicción y Clasificación de Fallos Eléctricos con IA",
+    page_icon=icono_pestana,
     layout="wide",
     initial_sidebar_state="collapsed",
 )
@@ -91,10 +107,49 @@ st.markdown(
 
 def pagina_principal():
     """Consola Principal de Monitoreo y Diagnóstico con navegación por módulos SPA."""
+    # 1. Detección proactiva de rutas no válidas (Error 404)
+    rutas_registradas = {
+        "",
+        "que-es-electrovolt",
+        "politica-privacidad-electrovolt",
+        "terminos-condiciones-electrovolt",
+        "404",
+    }
+    modulos_validos = {
+        "diagnostic-real-time",
+        "diagnostic-from-file",
+        "info-audit-model",
+        "que-es-electrovolt",
+        "politica-privacidad-electrovolt",
+        "terminos-condiciones-electrovolt",
+        "404",
+    }
+
+    intended_route = ""
+    try:
+        from streamlit.runtime.scriptrunner_utils.script_run_context import get_script_run_ctx
+        ctx = get_script_run_ctx()
+        if ctx and hasattr(ctx, "pages_manager"):
+            intended_route = (getattr(ctx.pages_manager, "intended_page_name", "") or "").strip()
+    except Exception:
+        intended_route = ""
+
+    modulo_url = st.query_params.get("modulo")
+
+    # Si el usuario intentó acceder a una ruta inexistente o parámetro módulo no reconocido
+    if intended_route and intended_route not in rutas_registradas:
+        pagina_error_404(ruta_invalida=intended_route)
+        return
+
+    if modulo_url and modulo_url not in modulos_validos:
+        pagina_error_404(ruta_invalida=f"?modulo={modulo_url}")
+        return
+
+    inyectar_seo()
+
     if "modulo_activo" not in st.session_state:
         st.session_state.modulo_activo = "diagnostic-real-time"
 
-    modulo_url = st.query_params.get("modulo")
     url_guardada = st.session_state.get("_url_modulo_guardada")
     if (
         modulo_url
@@ -124,7 +179,7 @@ def main():
     """Enrutador de nivel superior de ElectroVOLT con páginas limpias según estándar Streamlit."""
     p_main = st.Page(
         pagina_principal,
-        title="ElectroVOLT | Consola Operativa",
+        title="ElectroVOLT — Predicción y Clasificación de Fallos Eléctricos con IA",
         url_path="",
         default=True,
     )
@@ -143,6 +198,11 @@ def main():
         title="Términos y Condiciones | ElectroVOLT",
         url_path="terminos-condiciones-electrovolt",
     )
+    p_404 = st.Page(
+        pagina_error_404,
+        title="404 — Página no encontrada | ElectroVOLT",
+        url_path="404",
+    )
 
     # Compatibilidad con accesos previos vía query param (?modulo=...)
     modulo_url = st.query_params.get("modulo")
@@ -152,8 +212,10 @@ def main():
         st.switch_page(p_privacidad)
     elif modulo_url == "terminos-condiciones-electrovolt":
         st.switch_page(p_terminos)
+    elif modulo_url == "404":
+        st.switch_page(p_404)
 
-    nav = st.navigation([p_main, p_que_es, p_privacidad, p_terminos], position="hidden")
+    nav = st.navigation([p_main, p_que_es, p_privacidad, p_terminos, p_404], position="hidden")
     nav.run()
 
 

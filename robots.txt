@@ -1,0 +1,24 @@
+# robots.txt para ElectroVOLT (Optimizado para Googlebot, Bingbot, Edge y Motores IA)
+User-agent: *
+Allow: /
+
+# Motores de Búsqueda de Inteligencia Artificial (Permitir rastreo e indexación)
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: GPTBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Applebot
+Allow: /
+
+Sitemap: https://electrovolt.streamlit.app/sitemap.xml

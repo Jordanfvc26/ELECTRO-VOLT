@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import streamlit as st
+from app.seo import inyectar_seo
 from app.styles import aplicar_estilos_css
 from app.utils import render_html
 from app.components.header import render_header
@@ -10,6 +11,14 @@ from app.components.footer import render_footer
 
 def pagina_terminos_condiciones():
     """Página de Términos y Condiciones de uso (/terminos-condiciones-electrovolt)."""
+    inyectar_seo(
+        titulo="Términos y Condiciones de Uso Operativo | ElectroVOLT",
+        descripcion=(
+            "Términos de uso, carácter consultivo (DSS), reglas de seguridad eléctrica "
+            "y deslinde de responsabilidades operativas en la plataforma ElectroVOLT."
+        ),
+        url_relativa="terminos-condiciones-electrovolt",
+    )
     aplicar_estilos_css()
     render_header()
 

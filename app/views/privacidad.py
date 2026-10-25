@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import streamlit as st
+from app.seo import inyectar_seo
 from app.styles import aplicar_estilos_css
 from app.utils import render_html
 from app.components.header import render_header
@@ -10,6 +11,14 @@ from app.components.footer import render_footer
 
 def pagina_politica_privacidad():
     """Página de Política de Privacidad y Tratamiento de Datos (/politica-privacidad-electrovolt)."""
+    inyectar_seo(
+        titulo="Política de Privacidad y Tratamiento de Telemetría | ElectroVOLT",
+        descripcion=(
+            "Directrices de privacidad, tratamiento de magnitudes físicas de red, cero retención "
+            "en RAM y ciberseguridad industrial en subestaciones eléctricas para ElectroVOLT."
+        ),
+        url_relativa="politica-privacidad-electrovolt",
+    )
     aplicar_estilos_css()
     render_header()
 

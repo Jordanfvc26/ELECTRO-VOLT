@@ -533,6 +533,197 @@ def aplicar_estilos_css():
             .kpi-grid-4 {
                 grid-template-columns: 1fr !important;
             }
+            .error-404-card {
+                padding: 1.75rem 1.25rem !important;
+            }
+            .error-hero-number {
+                font-size: 4rem !important;
+            }
+            .error-hero-spark {
+                font-size: 3rem !important;
+            }
+            .error-title {
+                font-size: 1.45rem !important;
+            }
+            .error-nav-grid {
+                grid-template-columns: 1fr !important;
+            }
+        }
+
+        /* ==============================================================================
+           ESTILOS SCADA PARA PÁGINA 404 (ERROR DE RUTA / TOPOLOGÍA)
+           ============================================================================== */
+        body:has(.error-404-container) div[data-testid="stDialog"],
+        body:has(.error-404-container) div[role="dialog"],
+        body:has(.error-404-container) div[data-baseweb="modal"],
+        body:has(.error-404-container) div[data-baseweb="backdrop"] {
+            display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+            height: 0 !important;
+            width: 0 !important;
+        }
+
+        .error-404-container {
+            max-width: 1080px;
+            margin: 0 auto;
+            padding: 0.5rem 0 2rem 0;
+        }
+        .error-404-card {
+            background-color: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            padding: 2.5rem 2.4rem;
+            box-shadow: 0 4px 20px -2px rgba(0, 42, 105, 0.08);
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+        .error-badge-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            font-size: 0.75rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            background: rgba(220, 38, 38, 0.08);
+            color: #dc2626;
+            border: 1px solid rgba(220, 38, 38, 0.25);
+            padding: 0.35rem 0.85rem;
+            border-radius: 9999px;
+            margin-bottom: 1.25rem;
+        }
+        .error-badge-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #dc2626;
+            animation: pulse404 1.8s infinite;
+        }
+        @keyframes pulse404 {
+            0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.6); }
+            70% { box-shadow: 0 0 0 8px rgba(220, 38, 38, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+        }
+        .error-hero-number {
+            font-size: 5.5rem;
+            font-weight: 900;
+            line-height: 1;
+            letter-spacing: -0.04em;
+            background: linear-gradient(135deg, #002a69 0%, #1e40af 45%, #f59e0b 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin: 0.25rem 0 0.5rem 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.15rem;
+        }
+        .error-hero-spark {
+            display: inline-block;
+            font-size: 4.2rem;
+            filter: drop-shadow(0 0 12px rgba(245, 158, 11, 0.6));
+            -webkit-text-fill-color: #f59e0b;
+            animation: floatSpark 2.5s ease-in-out infinite;
+        }
+        @keyframes floatSpark {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-6px); }
+        }
+        .error-title {
+            font-size: 1.85rem;
+            font-weight: 800;
+            color: #0f172a;
+            margin-bottom: 0.5rem;
+        }
+        .error-subtitle {
+            font-size: 0.98rem;
+            color: #64748b;
+            max-width: 680px;
+            margin: 0 auto 1.75rem auto;
+            line-height: 1.6;
+        }
+        .error-telemetry-box {
+            background: #0f172a;
+            color: #e2e8f0;
+            border-radius: 12px;
+            padding: 1.25rem 1.5rem;
+            text-align: left;
+            max-width: 720px;
+            margin: 0 auto 2rem auto;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.82rem;
+            border-left: 4px solid #f59e0b;
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.25);
+        }
+        .error-code-highlight {
+            color: #f87171;
+            font-weight: 700;
+            background: rgba(239, 68, 68, 0.15);
+            padding: 0.15rem 0.5rem;
+            border-radius: 4px;
+        }
+        .error-nav-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 1.5rem auto 2rem auto;
+            text-align: left;
+            max-width: 900px;
+        }
+        .error-nav-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 1.15rem;
+            text-decoration: none !important;
+            color: #0f172a !important;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+        .error-nav-card:hover {
+            background: #ffffff;
+            border-color: #002a69;
+            box-shadow: 0 8px 16px -4px rgba(0, 42, 105, 0.12);
+            transform: translateY(-3px);
+        }
+        .error-nav-card-title {
+            font-weight: 700;
+            font-size: 0.92rem;
+            color: #002a69;
+            display: flex;
+            align-items: center;
+            gap: 0.45rem;
+        }
+        .error-nav-card-desc {
+            font-size: 0.78rem;
+            color: #64748b;
+            line-height: 1.45;
+        }
+        .error-btn-primary {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #002a69 0%, #1e40af 100%);
+            color: #ffffff !important;
+            padding: 0.75rem 1.75rem;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 0.95rem;
+            text-decoration: none !important;
+            box-shadow: 0 4px 14px rgba(0, 42, 105, 0.25);
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        .error-btn-primary:hover {
+            background: linear-gradient(135deg, #001e4d 0%, #1d4ed8 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 18px rgba(0, 42, 105, 0.35);
+            color: #ffffff !important;
+            text-decoration: none !important;
         }
 
         /* Estilización del File Uploader de Streamlit en Formato Dropzone */

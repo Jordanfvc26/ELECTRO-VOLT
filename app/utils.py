@@ -63,3 +63,13 @@ def obtener_logo_base64() -> str:
     if ruta_logo.exists():
         return base64.b64encode(ruta_logo.read_bytes()).decode("utf-8")
     return ""
+
+
+@st.cache_data(show_spinner=False)
+def obtener_isotipo_base64() -> str:
+    """Carga y cachea el isotipo oficial en base64 para favicon y metadatos."""
+    ruta_iso = raiz / "src" / "images" / "electrovolt-isotipo.png"
+    if ruta_iso.exists():
+        return base64.b64encode(ruta_iso.read_bytes()).decode("utf-8")
+    return ""
+
