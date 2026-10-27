@@ -23,6 +23,12 @@ if raiz not in sys.path:
 if "app" in sys.modules and not hasattr(sys.modules["app"], "__path__"):
     del sys.modules["app"]
 
+try:
+    from scripts.patch_seo import parchear_archivos_estaticos_streamlit
+    parchear_archivos_estaticos_streamlit()
+except Exception:
+    pass
+
 from PIL import Image
 
 try:
