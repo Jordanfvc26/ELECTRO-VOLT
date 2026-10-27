@@ -21,4 +21,4 @@ Allow: /
 User-agent: Applebot
 Allow: /
 
-Sitemap: https://electrovolt.streamlit.app/sitemap.xml
+Sitemap: https://electro-volt.onrender.com/sitemap.xml

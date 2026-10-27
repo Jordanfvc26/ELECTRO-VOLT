@@ -96,7 +96,7 @@ def inyectar_seo(
     logo_b64 = obtener_logo_base64()
     iso_b64 = obtener_isotipo_base64()
 
-    url_base = "https://electrovolt.streamlit.app"
+    url_base = "https://electro-volt.onrender.com"
     url_completa = f"{url_base}/{url_relativa.lstrip('/')}" if url_relativa else f"{url_base}/"
 
     # Imagen para compartir en redes sociales (Data URI fallback + URL estática)
@@ -232,39 +232,62 @@ def inyectar_seo(
 
     schema_json_str = json.dumps(schema_data, ensure_ascii=False)
 
-    # Inyección de favicon dinámico vía JavaScript
-    js_favicon = ""
-    if favicon_src:
-        js_favicon = f"""
-        <script>
-        (function() {{
-            function actualizarFavicon() {{
+    # Inyección de favicon y verificación dinámica vía JavaScript
+    js_head_scripts = f"""
+    <script>
+    (function() {{
+        function inyectarMetas() {{
+            var faviconUrl = '{favicon_src}';
+            if (faviconUrl) {{
                 var links = document.querySelectorAll("link[rel*='icon']");
                 links.forEach(function(el) {{ el.remove(); }});
                 var nuevoLink = document.createElement('link');
                 nuevoLink.type = 'image/png';
                 nuevoLink.rel = 'icon';
-                nuevoLink.href = '{favicon_src}';
+                nuevoLink.href = faviconUrl;
                 document.head.appendChild(nuevoLink);
 
                 var appleLink = document.createElement('link');
                 appleLink.rel = 'apple-touch-icon';
-                appleLink.href = '{favicon_src}';
+                appleLink.href = faviconUrl;
                 document.head.appendChild(appleLink);
             }}
-            if (document.readyState === 'loading') {{
-                document.addEventListener('DOMContentLoaded', actualizarFavicon);
-            }} else {{
-                actualizarFavicon();
+
+            var metaGSC = document.querySelector("meta[name='google-site-verification']");
+            if (!metaGSC) {{
+                var m = document.createElement('meta');
+                m.name = 'google-site-verification';
+                m.content = 'g2l5IovdAV37gpevFBB48YWyrJ_zcRh7wAa1zKhiyMs';
+                document.head.appendChild(m);
             }}
-            setTimeout(actualizarFavicon, 500);
-            setTimeout(actualizarFavicon, 1500);
-        }})();
-        </script>
-        """
+            try {{
+                if (window.parent && window.parent.document && window.parent.document.head) {{
+                    var mParent = window.parent.document.querySelector("meta[name='google-site-verification']");
+                    if (!mParent) {{
+                        var mp = window.parent.document.createElement('meta');
+                        mp.name = 'google-site-verification';
+                        mp.content = 'g2l5IovdAV37gpevFBB48YWyrJ_zcRh7wAa1zKhiyMs';
+                        window.parent.document.head.appendChild(mp);
+                    }}
+                }}
+            }} catch(e) {{}}
+        }}
+        if (document.readyState === 'loading') {{
+            document.addEventListener('DOMContentLoaded', inyectarMetas);
+        }} else {{
+            inyectarMetas();
+        }}
+        setTimeout(inyectarMetas, 400);
+        setTimeout(inyectarMetas, 1200);
+    }})();
+    </script>
+    """
 
     # Bloque HTML con etiquetas meta y Schema.org
     meta_html = f"""
+    <!-- VERIFICACIÓN OFICIAL DE GOOGLE SEARCH CONSOLE -->
+    <meta name="google-site-verification" content="g2l5IovdAV37gpevFBB48YWyrJ_zcRh7wAa1zKhiyMs" />
+
     <!-- META TAGS SEO PRINCIPALES -->
     <meta name="description" content="{descripcion}" />
     <meta name="keywords" content="{KEYWORDS_STR}" />
@@ -298,7 +321,7 @@ def inyectar_seo(
     {schema_json_str}
     </script>
 
-    {js_favicon}
+    {js_head_scripts}
 
     <!-- BLOQUE SEMÁNTICO DE RASTREO INDEXABLE PARA MOTORES DE BÚSQUEDA Y AGENTES IA -->
     <div style="position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0;" aria-hidden="false">
