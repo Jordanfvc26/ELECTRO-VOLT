@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -24,15 +24,17 @@ from sklearn.metrics import (
     recall_score,
 )
 
+from src.config import cargar_configuracion, obtener_logger, obtener_raiz_proyecto
 from src.utils import (
     COLUMNAS,
     NOTA_CLASES,
     ORDEN_CLASES,
     SEMILLA,
     guardar_json,
-    obtener_raiz_proyecto,
     obtener_ruta_resultados,
 )
+
+logger = obtener_logger(__name__)
 
 
 def normalizar_shap(
@@ -67,6 +69,7 @@ def normalizar_shap(
     if sv.shape == (n_clases, n_muestras, n_vars):
         return np.transpose(sv, (1, 2, 0))
 
+    logger.error(f"Forma inesperada de valores SHAP: {sv.shape}. Se esperaba ({n_muestras}, {n_vars}, {n_clases})")
     raise ValueError(
         f"Forma inesperada de valores SHAP: {sv.shape}. "
         f"Se esperaba transposición hacia ({n_muestras}, {n_vars}, {n_clases})."
@@ -92,7 +95,18 @@ def medir_latencia_y_throughput(
 
     Returns:
         Tupla con (latencia_ms, throughput_muestras_seg).
+
+    Raises:
+        TypeError: Si X_uno o X_lote no son DataFrames.
+        ValueError: Si n_iteraciones <= 0 o X_lote está vacío.
     """
+    if not isinstance(X_uno, pd.DataFrame) or not isinstance(X_lote, pd.DataFrame):
+        raise TypeError("X_uno y X_lote deben ser instancias de pd.DataFrame.")
+    if n_iteraciones <= 0:
+        raise ValueError(f"n_iteraciones debe ser positivo. Recibido: {n_iteraciones}")
+    if X_lote.empty:
+        raise ValueError("X_lote no puede estar vacío.")
+
     # Medición de latencia individual con predict_proba
     t0 = time.time()
     for _ in range(n_iteraciones):
@@ -105,6 +119,7 @@ def medir_latencia_y_throughput(
     tiempo_lote = time.time() - t0
     throughput = len(X_lote) / tiempo_lote if tiempo_lote > 0 else 0.0
 
+    logger.debug(f"Benchmarking CPU: latencia={latencia_ms:.2f} ms, throughput={throughput:.1f} muestras/s")
     return float(latencia_ms), float(throughput)
 
 
@@ -118,6 +133,8 @@ def evaluar_metas_smart(
 ) -> pd.DataFrame:
     """Verifica formalmente el cumplimiento de los umbrales de éxito SMART del proyecto.
 
+    Lee los umbrales configurables desde config.yaml.
+
     Args:
         acc: Accuracy en el conjunto de prueba.
         f1m: F1-Score macro en el conjunto de prueba.
@@ -129,13 +146,23 @@ def evaluar_metas_smart(
     Returns:
         DataFrame con la columna de estado '¿Cumple?' (Sí / No).
     """
+    config = cargar_configuracion()
+    smart_cfg = config.get("metas_smart", {})
+
+    u_acc = float(smart_cfg.get("accuracy_minimo", 0.90))
+    u_f1 = float(smart_cfg.get("f1_macro_minimo", 0.90))
+    u_rec = float(smart_cfg.get("recall_minimo_por_clase", 0.85))
+    u_lat = float(smart_cfg.get("latencia_maxima_ms", 100.0))
+    u_thr = float(smart_cfg.get("throughput_minimo_muestras_seg", 500.0))
+    u_tent = float(smart_cfg.get("tiempo_entrenamiento_maximo_seg", 300.0))
+
     metas = [
-        ("Accuracy ≥ 0.90", f"{acc:.3f}", acc >= 0.90),
-        ("F1 macro ≥ 0.90", f"{f1m:.3f}", f1m >= 0.90),
-        ("Recall mínimo por clase ≥ 0.85", f"{recall_min:.3f}", recall_min >= 0.85),
-        ("Latencia por predicción < 100 ms", f"{lat_ms:.1f} ms", lat_ms < 100.0),
-        ("Throughput ≥ 500 muestras/s", f"{muestras_seg:,.0f}/s", muestras_seg >= 500.0),
-        ("Tiempo de entrenamiento < 5 min", f"{t_ent:.1f} s", t_ent < 300.0),
+        (f"Accuracy >= {u_acc:.2f}", f"{acc:.3f}", acc >= u_acc),
+        (f"F1 macro >= {u_f1:.2f}", f"{f1m:.3f}", f1m >= u_f1),
+        (f"Recall mínimo por clase >= {u_rec:.2f}", f"{recall_min:.3f}", recall_min >= u_rec),
+        (f"Latencia por predicción < {u_lat:.0f} ms", f"{lat_ms:.1f} ms", lat_ms < u_lat),
+        (f"Throughput >= {u_thr:,.0f} muestras/s", f"{muestras_seg:,.0f}/s", muestras_seg >= u_thr),
+        (f"Tiempo de entrenamiento < {u_tent/60:.0f} min", f"{t_ent:.1f} s", t_ent < u_tent),
     ]
 
     resumen = pd.DataFrame(metas, columns=["Meta SMART", "Resultado", "¿Cumple?"])
@@ -198,6 +225,11 @@ def generar_reporte_metricas(
         },
     }
 
+    logger.info(
+        f"Métricas calculadas: Accuracy={acc:.4f}, F1-macro={f1m:.4f}, "
+        f"Recall-min={recall_min:.4f}, Latencia={lat_ms:.2f} ms"
+    )
+
     return {
         "metricas_json": metricas_exportables,
         "tabla_smart": tabla_smart,
@@ -225,6 +257,7 @@ def guardar_metricas(
         ruta_oficial = Path(ruta_salida)
 
     guardar_json(metricas_dict, ruta_oficial)
+    logger.info(f"Reporte de métricas guardado en: {ruta_oficial}")
     return ruta_oficial
 
 
@@ -255,6 +288,7 @@ def graficar_matriz_confusion(
         ruta_guardado = obtener_ruta_resultados("figures") / "matriz_confusion.png"
     Path(ruta_guardado).parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(ruta_guardado, dpi=300)
+    plt.close(fig)
     return fig
 
 
@@ -281,6 +315,7 @@ def graficar_comparativa_f1(
         ruta_guardado = obtener_ruta_resultados("figures") / "f1_comparativa_modelos.png"
     Path(ruta_guardado).parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(ruta_guardado, dpi=300)
+    plt.close(fig)
     return fig
 
 
@@ -321,9 +356,10 @@ def graficar_explicabilidad_shap_global(
             ruta_guardado = obtener_ruta_resultados("figures") / "shap_importancia_global.png"
         Path(ruta_guardado).parent.mkdir(parents=True, exist_ok=True)
         fig.savefig(ruta_guardado, dpi=300)
+        plt.close(fig)
         return fig
-    except Exception as e:
-        print(f"No fue posible generar gráficos globales SHAP: {e}")
+    except Exception as err:
+        logger.warning(f"No fue posible generar gráficos globales SHAP: {err}")
         return None
 
 
@@ -352,6 +388,7 @@ def graficar_distribucion_clases(
         Path(ruta_guardado).parent.mkdir(parents=True, exist_ok=True)
         fig.savefig(ruta_guardado, dpi=300)
 
+    plt.close(fig)
     return fig
 
 
@@ -390,9 +427,10 @@ def graficar_shap_heatmap(
             ruta_guardado = obtener_ruta_resultados("figures") / "shap_heatmap_clases.png"
         Path(ruta_guardado).parent.mkdir(parents=True, exist_ok=True)
         fig.savefig(ruta_guardado, dpi=300)
+        plt.close(fig)
         return fig
-    except Exception as e:
-        print(f"No fue posible generar heatmap SHAP: {e}")
+    except Exception as err:
+        logger.warning(f"No fue posible generar heatmap SHAP: {err}")
         return None
 
 
@@ -440,7 +478,8 @@ def graficar_shap_local(
             ruta_guardado = obtener_ruta_resultados("figures") / "shap_explicacion_local.png"
         Path(ruta_guardado).parent.mkdir(parents=True, exist_ok=True)
         fig.savefig(ruta_guardado, dpi=300)
+        plt.close(fig)
         return fig
-    except Exception as e:
-        print(f"No fue posible generar gráfico SHAP local: {e}")
+    except Exception as err:
+        logger.warning(f"No fue posible generar gráfico SHAP local: {err}")
         return None

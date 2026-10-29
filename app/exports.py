@@ -21,6 +21,10 @@ except ImportError:
     REPORTLAB_DISPONIBLE = False
 
 from app.utils import render_html
+from src.config import obtener_logger
+
+logger = obtener_logger(__name__)
+
 
 def generar_excel_diagnostico(df_res: pd.DataFrame) -> bytes:
     """Genera un archivo Excel (.xlsx) con los resultados del diagnóstico en lote."""
@@ -149,14 +153,16 @@ def render_barra_descargas(df_res: pd.DataFrame):
     try:
         xlsx_bytes = generar_excel_diagnostico(df_res)
         b64_xlsx = base64.b64encode(xlsx_bytes).decode()
-    except Exception:
+    except Exception as err:
+        logger.warning(f"No se pudo generar el archivo XLSX para exportación: {err}")
         b64_xlsx = ""
 
     # PDF
     try:
         pdf_bytes = generar_pdf_diagnostico(df_res)
         b64_pdf = base64.b64encode(pdf_bytes).decode()
-    except Exception:
+    except Exception as err:
+        logger.warning(f"No se pudo generar el archivo PDF para exportación: {err}")
         b64_pdf = ""
 
     svg_csv = (
@@ -214,4 +220,3 @@ def render_barra_descargas(df_res: pd.DataFrame):
     </div>
     """
     render_html(html_bar)
-

@@ -1,0 +1,105 @@
+# ==============================================================================
+# ELECTROVOLT: Archivo de Configuración Global del Sistema
+# Proyecto Integrador de Maestría en Inteligencia Artificial (UEES 2026)
+# ==============================================================================
+
+proyecto:
+  nombre: "ELECTROVOLT"
+  version: "1.0.0"
+  autores:
+    - "Jordan Fabian Vera Coello"
+    - "Jorge Rafael Estrella Frere"
+  descripcion: "Detección y Clasificación Multiclase de Fallos Eléctricos con Machine Learning e IA Explicable (XAI)"
+  entorno: "production"
+
+semilla: 42
+
+datos:
+  ruta_raw: "data/raw/classData.csv"
+  ruta_procesados: "data/processed/ejemplos_prueba.csv"
+  test_size: 0.20
+  shuffle: true
+  columnas_requeridas_crudas:
+    - "Ia"
+    - "Ib"
+    - "Ic"
+    - "Va"
+    - "Vb"
+    - "Vc"
+    - "G"
+    - "C"
+    - "B"
+    - "A"
+  columnas_modelo:
+    - "Va"
+    - "Vb"
+    - "Vc"
+    - "Ia"
+    - "Ib"
+    - "Ic"
+  columnas_fe_13:
+    - "Va"
+    - "Vb"
+    - "Vc"
+    - "Ia"
+    - "Ib"
+    - "Ic"
+    - "I0"
+    - "V0"
+    - "abs_I0"
+    - "abs_V0"
+    - "I_max"
+    - "I_min"
+    - "V_max"
+
+modelos:
+  random_forest:
+    n_estimators: 100
+    class_weight: "balanced"
+    random_state: 42
+    n_jobs: -1
+  regresion_logistica:
+    max_iter: 2000
+    class_weight: "balanced"
+    random_state: 42
+  svm_rbf:
+    kernel: "rbf"
+    C: 10.0
+    gamma: "scale"
+    class_weight: "balanced"
+    probability: true
+    random_state: 42
+  validacion_cruzada:
+    n_splits: 5
+    shuffle: true
+    scoring: "f1_macro"
+  serializacion:
+    nombre_best_model: "best_model.pkl"
+    nombre_joblib: "modelo_fallos_rf.joblib"
+    nombre_v1: "model_v1.pkl"
+    compresion: 3
+
+operacion:
+  rango_voltaje_pu:
+    min: -0.65
+    max: 0.65
+  rango_corriente_amperios:
+    min: -900.0
+    max: 900.0
+  umbral_confianza_minima: 0.80
+  umbral_retorno_tierra_amperios: 20.0
+  tiempo_maximo_inferencia_ms: 100.0
+
+metas_smart:
+  accuracy_minimo: 0.90
+  f1_macro_minimo: 0.90
+  recall_minimo_por_clase: 0.85
+  latencia_maxima_ms: 100.0
+  throughput_minimo_muestras_seg: 500.0
+  tiempo_entrenamiento_maximo_seg: 300.0
+
+logging:
+  nivel: "INFO"
+  formato: "[%(asctime)s] [%(levelname)s] [%(name)s]: %(message)s"
+  formato_fecha: "%Y-%m-%d %H:%M:%S"
+

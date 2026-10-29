@@ -230,3 +230,18 @@ def test_alineacion_fases_rotacion_multicapa(paquete_modelo) -> None:
 
 
 
+
+
+def test_predecir_falla_validacion_inputs_nulos_o_invalidos() -> None:
+    """Verifica que predecir_falla valide los tipos y levante TypeError ante inputs inválidos."""
+    with pytest.raises(TypeError, match="no puede ser nula"):
+        predecir_falla(None, 0.0, 0.0, 0.0, 0.0, 0.0)
+
+    with pytest.raises(TypeError, match="debe ser un valor numérico real"):
+        predecir_falla("invalido", 0.0, 0.0, 0.0, 0.0, 0.0)
+
+
+def test_cargar_paquete_modelo_archivo_inexistente() -> None:
+    """Verifica que cargar_paquete_modelo levante FileNotFoundError si no existe el archivo."""
+    with pytest.raises(FileNotFoundError, match="No se encontró un modelo"):
+        cargar_paquete_modelo("ruta_falsa/modelo.pkl")

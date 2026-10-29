@@ -130,3 +130,22 @@ def test_exportar_ejemplos_prueba(df_crudo: pd.DataFrame, tmp_path) -> None:
     assert ruta_tmp.exists(), "El archivo de ejemplos debe haberse creado"
     assert len(ejemplos) == 15, f"Deben ser 15 muestras (3 × 5 clases), se obtuvieron {len(ejemplos)}"
     assert list(ejemplos.columns) == COLUMNAS + ["clase"]
+
+
+def test_cargar_datos_archivo_inexistente() -> None:
+    """Verifica que cargar_datos levante FileNotFoundError con mensaje explicativo si la ruta no existe."""
+    with pytest.raises(FileNotFoundError, match="No se encontró"):
+        cargar_datos("ruta_falsa/que_no_existe.csv")
+
+
+def test_dividir_datos_test_size_invalido(df_crudo: pd.DataFrame) -> None:
+    """Verifica que dividir_datos valide el rango de test_size y levante ValueError."""
+    df_5 = mapear_clases(df_crudo)
+    with pytest.raises(ValueError, match="test_size debe estar entre 0.0 y 1.0"):
+        dividir_datos(df_5, test_size=1.5)
+
+
+def test_mapear_clases_modo_invalido(df_crudo: pd.DataFrame) -> None:
+    """Verifica que mapear_clases rechace modos no soportados levantando ValueError."""
+    with pytest.raises(ValueError, match="Modo no soportado"):
+        mapear_clases(df_crudo, modo="modo_inexistente")
