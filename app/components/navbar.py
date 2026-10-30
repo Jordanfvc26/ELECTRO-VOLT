@@ -5,11 +5,16 @@ from __future__ import annotations
 import streamlit as st
 from app.utils import render_html
 
+
 def cb_cambiar_modulo(m: str):
     """Callback global para cambio instantáneo de módulo en session_state y URL."""
     st.session_state.modulo_activo = m
     st.session_state._url_modulo_guardada = m
     st.query_params["modulo"] = m
+    if st.session_state.get("tema_oscuro"):
+        st.query_params["theme"] = "dark"
+    elif "theme" in st.query_params:
+        st.query_params["theme"] = "light"
 
 
 def render_navbar(modulo_activo: str):
@@ -132,4 +137,3 @@ def render_navbar(modulo_activo: str):
             on_click=cb_cambiar_modulo,
             args=("info-audit-model",),
         )
-

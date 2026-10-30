@@ -4,7 +4,17 @@ from __future__ import annotations
 
 import streamlit as st
 
-def aplicar_estilos_css():
+def aplicar_estilos_css(tema_oscuro: bool | None = None):
+    tema_param = st.query_params.get('theme')
+    if tema_param == 'dark':
+        st.session_state.tema_oscuro = True
+    elif tema_param == 'light':
+        st.session_state.tema_oscuro = False
+    elif 'tema_oscuro' not in st.session_state:
+        st.session_state.tema_oscuro = False
+
+    if tema_oscuro is None:
+        tema_oscuro = bool(st.session_state.get('tema_oscuro', False))
     st.markdown(
         """
         <style>
@@ -176,6 +186,61 @@ def aplicar_estilos_css():
             font-weight: 700;
             color: #334155;
             box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        }
+        .header-theme-toggle {
+            width: 36px;
+            height: 36px;
+            border-radius: 9999px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+        }
+        .header-theme-toggle-light {
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+        }
+        .header-theme-toggle-dark {
+            background: #1e293b;
+            border: 1px solid #334155;
+            box-shadow: 0 0 12px rgba(251, 191, 36, 0.25);
+        }
+
+        /* Overlay interactivo del botón Streamlit sobre el conmutador de tema */
+        div[class*="st-key-btn_toggle_theme"] {
+            position: fixed !important;
+            top: 11px !important;
+            right: 2rem !important;
+            width: 36px !important;
+            height: 36px !important;
+            z-index: 100002 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        div[class*="st-key-btn_toggle_theme"] div[data-testid="stButton"],
+        div[class*="st-key-btn_toggle_theme"] button {
+            width: 36px !important;
+            height: 36px !important;
+            min-height: 36px !important;
+            border-radius: 9999px !important;
+            opacity: 0 !important;
+            cursor: pointer !important;
+            border: none !important;
+            background: transparent !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            box-shadow: none !important;
+        }
+        body:has(div[class*="st-key-btn_toggle_theme"] button:hover) .header-theme-toggle {
+            transform: scale(1.1) !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18) !important;
+        }
+        @media (max-width: 768px) {
+            div[class*="st-key-btn_toggle_theme"] {
+                right: 1rem !important;
+            }
         }
 
         /* Título de Sección de Módulos */
@@ -1886,5 +1951,287 @@ def aplicar_estilos_css():
         """,
         unsafe_allow_html=True,
     )
+    if tema_oscuro:
+        st.markdown(
+            """
+            <style>
+            /* ==============================================================================
+               TEMA OSCURO INDUSTRIAL DE ALTO CONTRASTE (DARK MODE)
+               ============================================================================== */
+            html, body, .stApp, div[data-testid="stAppViewContainer"] {
+                background-color: #0b0f19 !important;
+                color: #e2e8f0 !important;
+            }
+
+            /* Encabezados y Tipografía en Modo Oscuro */
+            h1, h2, h3, h4, h5,
+            [data-testid="stMarkdownContainer"] h1,
+            [data-testid="stMarkdownContainer"] h2,
+            [data-testid="stMarkdownContainer"] h3,
+            [data-testid="stMarkdownContainer"] h4,
+            [data-testid="stMarkdownContainer"] h5 {
+                color: #f8fafc !important;
+            }
+
+            p, span, [data-testid="stMarkdownContainer"] p {
+                color: #cbd5e1;
+            }
+
+            .module-section-title {
+                color: #94a3b8 !important;
+            }
+
+            /* Top Header Sticky Bar */
+            .top-navbar-strip {
+                background: #111827 !important;
+                border-bottom: 1px solid #1e293b !important;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45) !important;
+            }
+
+            /* Tarjetas de Módulos (Selector 1, 2, 3) */
+            .module-card-v3 {
+                background: #131b2e !important;
+                border: 1px solid #1e293b !important;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+            }
+            .module-card-v3:hover {
+                background: #17233d !important;
+                border-color: #3b82f6 !important;
+                box-shadow: 0 4px 14px rgba(59, 130, 246, 0.2) !important;
+            }
+            .module-card-v3-active {
+                border: 2px solid #3b82f6 !important;
+                background: #17233d !important;
+                box-shadow: 0 4px 18px rgba(59, 130, 246, 0.28) !important;
+            }
+            .module-title-v3 {
+                color: #e2e8f0 !important;
+            }
+            .module-title-v3-active {
+                color: #ffffff !important;
+            }
+            .module-desc-v3 {
+                color: #94a3b8 !important;
+            }
+            .module-icon-v3 {
+                background: #1e293b !important;
+                border: 1px solid #334155 !important;
+                color: #94a3b8 !important;
+            }
+            .module-icon-v3-active {
+                background: rgba(59, 130, 246, 0.2) !important;
+                border: 1px solid #3b82f6 !important;
+                color: #60a5fa !important;
+            }
+            .module-foot-v3 {
+                color: #64748b !important;
+            }
+            .module-foot-v3-active {
+                color: #60a5fa !important;
+            }
+
+            /* Tarjetas Principales del Sistema */
+            .factor-card,
+            .telemetry-main-card,
+            .xai-chart-card,
+            .batch-upload-card,
+            .audit-main-card,
+            .kpi-card-v2,
+            .info-page-card,
+            .info-glass-card,
+            .privacy-card,
+            .terms-card,
+            .not-found-card {
+                background: #131b2e !important;
+                border: 1px solid #1e293b !important;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+            }
+
+            .kpi-card-v2:hover {
+                border-color: #3b82f6 !important;
+            }
+            .kpi-label {
+                color: #94a3b8 !important;
+            }
+            .kpi-value {
+                color: #ffffff !important;
+            }
+            .kpi-footer-text {
+                color: #a7f3d0 !important;
+            }
+
+            /* Sinóptico Eléctrico / SLD */
+            .synoptic-card-nominal, .synoptic-cell-nominal {
+                background: rgba(6, 78, 59, 0.35) !important;
+                border: 1px solid #059669 !important;
+            }
+            .synoptic-card-nominal .synoptic-title {
+                color: #34d399 !important;
+            }
+            .synoptic-card-fault, .synoptic-cell-fault {
+                background: rgba(153, 27, 27, 0.35) !important;
+                border: 1px solid #dc2626 !important;
+            }
+            .synoptic-card-fault .synoptic-title {
+                color: #f87171 !important;
+            }
+            .synoptic-telemetry-box {
+                background: #0b0f19 !important;
+                border: 1px solid #1e293b !important;
+            }
+            .synoptic-telemetry-label {
+                color: #94a3b8 !important;
+            }
+            .synoptic-telemetry-val {
+                color: #f1f5f9 !important;
+            }
+            .synoptic-telemetry-val.val-fault {
+                color: #f87171 !important;
+            }
+            .synoptic-telemetry-unit {
+                color: #64748b !important;
+            }
+            .synoptic-status-nominal {
+                background: rgba(16, 185, 129, 0.2) !important;
+                color: #34d399 !important;
+                border: 1px solid rgba(16, 185, 129, 0.4) !important;
+            }
+            .synoptic-status-fault {
+                background: rgba(239, 68, 68, 0.2) !important;
+                color: #f87171 !important;
+                border: 1px solid rgba(239, 68, 68, 0.4) !important;
+            }
+
+            /* Inputs y Controles de Formulario */
+            div[data-baseweb="input"] {
+                background-color: #1e293b !important;
+                border-color: #334155 !important;
+            }
+            div[data-baseweb="input"]:focus-within {
+                border-color: #3b82f6 !important;
+                box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3) !important;
+            }
+            input, [data-testid="stNumberInput"] input {
+                background-color: #1e293b !important;
+                color: #ffffff !important;
+            }
+            label[data-testid="stWidgetLabel"] p {
+                color: #e2e8f0 !important;
+                font-weight: 500 !important;
+            }
+            div[data-testid="stNumberInput"] button {
+                background-color: #1e293b !important;
+                color: #94a3b8 !important;
+                border-color: #334155 !important;
+            }
+            div[data-testid="stNumberInput"] button:hover {
+                background-color: #334155 !important;
+                color: #ffffff !important;
+            }
+            div[data-testid="stFileUploader"] section {
+                background-color: #131b2e !important;
+                border-color: #334155 !important;
+            }
+            div[data-testid="stFileUploader"] span, div[data-testid="stFileUploader"] small {
+                color: #94a3b8 !important;
+            }
+
+            /* Botones en Modo Oscuro */
+            button[kind="secondary"] {
+                background-color: #1e293b !important;
+                color: #f1f5f9 !important;
+                border: 1px solid #334155 !important;
+            }
+            button[kind="secondary"]:hover {
+                background-color: #334155 !important;
+                color: #ffffff !important;
+                border-color: #475569 !important;
+            }
+            button[kind="primary"] {
+                background-color: #2563eb !important;
+                color: #ffffff !important;
+            }
+            button[kind="primary"]:hover {
+                background-color: #1d4ed8 !important;
+            }
+
+            /* Banner de Diagnóstico */
+            .diagnosis-banner-normal {
+                background: rgba(6, 78, 59, 0.35) !important;
+                border-color: #059669 !important;
+            }
+            .diagnosis-banner-fault {
+                background: rgba(153, 27, 27, 0.35) !important;
+                border-color: #dc2626 !important;
+            }
+            .step-pill-badge {
+                background: #1e293b !important;
+                color: #60a5fa !important;
+                border: 1px solid #334155 !important;
+            }
+            hr {
+                border-top-color: #1e293b !important;
+            }
+
+            /* Gráficos de Telemetría y Oscilogramas */
+            div[data-testid="stVegaLiteChart"] {
+                background: #131b2e !important;
+                border: 1px solid #1e293b !important;
+                border-radius: 10px !important;
+                padding: 8px !important;
+            }
+
+            /* Tablas y Resultados en Lote */
+            [data-testid="stDataFrame"] {
+                background: #131b2e !important;
+                border-color: #1e293b !important;
+            }
+            div[data-testid="stTable"] table {
+                background-color: #131b2e !important;
+                color: #e2e8f0 !important;
+                border-color: #1e293b !important;
+            }
+            div[data-testid="stTable"] th {
+                background-color: #1e293b !important;
+                color: #f8fafc !important;
+                border-color: #334155 !important;
+            }
+            div[data-testid="stTable"] td {
+                border-color: #1e293b !important;
+                color: #cbd5e1 !important;
+            }
+
+            /* Barra de Descargas */
+            .download-action-bar {
+                background: #131b2e !important;
+                border-color: #1e293b !important;
+            }
+            .download-action-label {
+                color: #94a3b8 !important;
+            }
+
+            /* Footer en Modo Oscuro */
+            .custom-footer-strip {
+                background: #111827 !important;
+                border-top: 1px solid #1f2937 !important;
+                color: #94a3b8 !important;
+            }
+            .footer-heading {
+                color: #ffffff !important;
+            }
+            .footer-brand-desc, .footer-copy, .footer-partner-label {
+                color: #94a3b8 !important;
+            }
+            .footer-link {
+                color: #60a5fa !important;
+            }
+            .footer-link:hover {
+                color: #93c5fd !important;
+            }
+            </style>
+            """,
+            unsafe_allow_html=True,
+        )
+
 
 

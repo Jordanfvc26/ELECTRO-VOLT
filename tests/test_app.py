@@ -105,3 +105,28 @@ def test_pagina_error_404_modulo() -> None:
     assert callable(pagina_error_404), "pagina_error_404 debe ser una función ejecutable"
     assert pagina_error_404 is pagina_error_exportada, "Debe estar exportada en app.views"
 
+
+
+def test_header_conmutador_tema_claro_oscuro() -> None:
+    """Verifica que el componente de Header importe el conmutador de tema claro/oscuro."""
+    from app.components.header import cb_alternar_tema, render_header
+    assert callable(render_header), "render_header debe ser invocable"
+    assert callable(cb_alternar_tema), "cb_alternar_tema debe ser invocable"
+
+
+def test_aplicar_estilos_soporta_modo_claro_y_oscuro() -> None:
+    """Verifica que aplicar_estilos_css soporte la invocación con tema claro y tema oscuro."""
+    from app.styles import aplicar_estilos_css
+    assert callable(aplicar_estilos_css)
+    # Ejecución sin excepciones en ambos modos
+    aplicar_estilos_css(tema_oscuro=False)
+    aplicar_estilos_css(tema_oscuro=True)
+
+
+def test_obtener_url_toggle_tema() -> None:
+    """Verifica que obtener_url_toggle_tema construya la URL correcta para cambiar de tema."""
+    from app.components.header import obtener_url_toggle_tema
+    url_dark = obtener_url_toggle_tema("dark")
+    assert "theme=dark" in url_dark
+    url_light = obtener_url_toggle_tema("light")
+    assert "theme=light" in url_light
