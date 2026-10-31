@@ -413,10 +413,10 @@ Los autores expresan su sincero agradecimiento a la **Ph.D. Gladys Villegas Ruge
 ## 12. Videos y Enlaces Multimedia
 
 * **Video pitch ejecutivo del proyecto:**  
-  
+https://drive.google.com/file/d/1zkcR6RTG9vXEc-eJNc2-y5cg2yBnlASo/view?usp=sharing  
 
 * **Video de respuestas a preguntas de defensa:**  
-  
+https://drive.google.com/file/d/1c9arA4us_9PuDb37dkOFAHApsDeNE40F/view?usp=sharing  
 
 * **Repositorio oficial en GitHub:**  
   [![GitHub](https://img.shields.io/badge/GitHub-Jordanfvc26-181717?logo=github)](https://github.com/Jordanfvc26/ELECTRO-VOLT)
